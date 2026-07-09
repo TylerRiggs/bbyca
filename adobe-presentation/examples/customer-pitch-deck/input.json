@@ -1,0 +1,207 @@
+{
+  "title": "Personalize at scale.",
+  "subtitle": "How Adobe Experience Cloud powers 1:1 experiences for the world's most demanding brands.",
+  "author": "Adobe",
+  "confidential": true,
+  "slides": [
+    {
+      "layout": "title-red",
+      "title": "Personalize at scale.",
+      "subtitle": "How Adobe Experience Cloud powers 1:1 experiences for the world's most demanding brands."
+    },
+    {
+      "layout": "agenda",
+      "title": "Agenda",
+      "rows": [
+        [
+          "1.",
+          "Where you are today",
+          "5 min"
+        ],
+        [
+          "2.",
+          "What's possible",
+          "15 min"
+        ],
+        [
+          "3.",
+          "How Adobe helps",
+          "20 min"
+        ],
+        [
+          "4.",
+          "Customer proof",
+          "10 min"
+        ],
+        [
+          "5.",
+          "Next steps",
+          "5 min"
+        ]
+      ]
+    },
+    {
+      "layout": "section-light",
+      "title": "Where you are today."
+    },
+    {
+      "layout": "content",
+      "title": "The four signals we hear most.",
+      "lead": "From our conversations across the industry over the past 12 months, the same themes keep surfacing.",
+      "bullets": [
+        {
+          "text": "Personalization stalled at the landing-page layer — every channel below is still batch.",
+          "level": 0
+        },
+        {
+          "text": "Cross-channel orchestration is brittle. One change ripples for weeks.",
+          "level": 0
+        },
+        {
+          "text": "The data is rich. The decisioning is poor.",
+          "level": 0
+        },
+        {
+          "text": "AI pilots ran. Measurable ROI didn't.",
+          "level": 0
+        }
+      ]
+    },
+    {
+      "layout": "comparison",
+      "title": "Before / After.",
+      "left": {
+        "header": "Before",
+        "bullets": [
+          "Manual segmentation",
+          "Batch campaigns",
+          "Weeks to launch a new offer",
+          "Channel-by-channel guesswork"
+        ]
+      },
+      "right": {
+        "header": "After",
+        "bullets": [
+          "Real-time segments",
+          "AI-suggested next-best-action",
+          "Hours from idea to live",
+          "Channel-aware orchestration"
+        ]
+      }
+    },
+    {
+      "layout": "section-dark",
+      "title": "What's possible."
+    },
+    {
+      "layout": "cards",
+      "title": "Three capabilities. One platform.",
+      "cards": [
+        {
+          "header": "Real-Time CDP",
+          "body": "Unify every signal — web, app, CRM, offline — into a single customer profile that updates in milliseconds."
+        },
+        {
+          "header": "Journey Optimizer",
+          "body": "Orchestrate cross-channel experiences with AI-suggested next-best-actions and on-the-fly decisioning."
+        },
+        {
+          "header": "Customer Journey Analytics",
+          "body": "Measure outcomes — not just clicks — across every step of every journey."
+        }
+      ]
+    },
+    {
+      "layout": "process",
+      "title": "How the pieces fit.",
+      "steps": [
+        {
+          "title": "Profile",
+          "desc": "Real-Time CDP builds and maintains the unified customer record."
+        },
+        {
+          "title": "Decision",
+          "desc": "Journey Optimizer's AI decides what each customer sees next."
+        },
+        {
+          "title": "Delivery",
+          "desc": "Native channels — email, push, web, in-app, offline."
+        },
+        {
+          "title": "Measurement",
+          "desc": "CJA closes the loop on outcomes."
+        }
+      ]
+    },
+    {
+      "layout": "section-light",
+      "title": "Customer proof."
+    },
+    {
+      "layout": "quote",
+      "quote": "Adobe gave us a 7x lift in email-to-conversion in the first quarter alone.",
+      "attribution": "VP, Digital Experience — Major North American Retailer"
+    },
+    {
+      "layout": "stat-row",
+      "title": "Across every industry.",
+      "stats": [
+        {
+          "value": "3.2x",
+          "label": "Conversion lift",
+          "note": "Top-10 US retailer"
+        },
+        {
+          "value": "47%",
+          "label": "Lower cost-per-acquisition",
+          "note": "Global financial services brand"
+        },
+        {
+          "value": "23%",
+          "label": "More repeat bookings",
+          "note": "International travel group"
+        },
+        {
+          "value": "5.1x",
+          "label": "Subscription renewals",
+          "note": "Major media network"
+        }
+      ]
+    },
+    {
+      "layout": "section-light",
+      "title": "Next steps."
+    },
+    {
+      "layout": "process",
+      "title": "A pragmatic 90-day path.",
+      "steps": [
+        {
+          "label": "Weeks 1–2",
+          "title": "Use-case workshop",
+          "desc": "Pick the one journey that matters most."
+        },
+        {
+          "label": "Weeks 3–6",
+          "title": "Stand up Real-Time CDP",
+          "desc": "Connect your top three data sources."
+        },
+        {
+          "label": "Weeks 7–10",
+          "title": "Activate Journey Optimizer",
+          "desc": "Go live on the chosen journey."
+        },
+        {
+          "label": "Weeks 11–12",
+          "title": "Measure and plan",
+          "desc": "Learn with CJA; queue the next journey."
+        }
+      ]
+    },
+    {
+      "layout": "thank-you",
+      "title": "Thank you.",
+      "contact": "Tyler Riggs  |  sriggs@adobe.com  |  Adobe Data & Journeys"
+    }
+  ]
+}

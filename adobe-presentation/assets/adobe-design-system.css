@@ -1,0 +1,393 @@
+/* =========================================================
+   ADOBE DESIGN SYSTEM — Colors & Type
+   Source: Adobe Brand Guidelines (Jan 6, 2025)
+   ========================================================= */
+
+/* ---------- Fonts ---------- */
+@font-face {
+  font-family: "Adobe Clean";
+  src: url("./fonts/AdobeClean-Light.otf") format("opentype");
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Adobe Clean";
+  src: url("./fonts/AdobeClean-LightIt.otf") format("opentype");
+  font-weight: 300;
+  font-style: italic;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Adobe Clean";
+  src: url("./fonts/AdobeClean-SemiLight.otf") format("opentype");
+  font-weight: 350;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Adobe Clean";
+  src: url("./fonts/AdobeClean-SemiLightIt.otf") format("opentype");
+  font-weight: 350;
+  font-style: italic;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Adobe Clean";
+  src: url("./fonts/AdobeClean-Regular.otf") format("opentype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Adobe Clean";
+  src: url("./fonts/AdobeClean-It.otf") format("opentype");
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Adobe Clean";
+  src: url("./fonts/AdobeClean-Medium.otf") format("opentype");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Adobe Clean";
+  src: url("./fonts/AdobeClean-Bold.otf") format("opentype");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Adobe Clean";
+  src: url("./fonts/AdobeClean-BoldIt.otf") format("opentype");
+  font-weight: 700;
+  font-style: italic;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Adobe Clean";
+  src: url("./fonts/AdobeClean-ExtraBold.otf") format("opentype");
+  font-weight: 800;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Adobe Clean";
+  src: url("./fonts/AdobeClean-ExtraBoldIt.otf") format("opentype");
+  font-weight: 800;
+  font-style: italic;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Adobe Clean";
+  src: url("./fonts/AdobeClean-Black.otf") format("opentype");
+  font-weight: 900;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Adobe Clean";
+  src: url("./fonts/AdobeClean-BlackIt.otf") format("opentype");
+  font-weight: 900;
+  font-style: italic;
+  font-display: swap;
+}
+
+/* Condensed family — used for display/editorial moments */
+@font-face {
+  font-family: "Adobe Clean Cond";
+  src: url("./fonts/AdobeClean-Cond.otf") format("opentype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Adobe Clean Cond";
+  src: url("./fonts/AdobeClean-BoldCond.otf") format("opentype");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Adobe Clean SemiCn";
+  src: url("./fonts/AdobeClean-SemiCn.otf") format("opentype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Adobe Clean SemiCn";
+  src: url("./fonts/AdobeClean-BoldSemiCn.otf") format("opentype");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  /* =========================================================
+     CORE BRAND PALETTE
+     "Our palette is simple — red, black, and white." — BG p.44
+     ========================================================= */
+  --adobe-red: #EB1000;
+  --adobe-black: #000000;
+  --adobe-white: #FFFFFF;
+
+  /* =========================================================
+     ADDITIONAL PALETTE (accent use only; never tinted/toned)
+     BG p.46 — "Don't use tones or transparencies of the colors."
+     ========================================================= */
+  --c-pink:    #FF4885;
+  --c-magenta: #F24CB8;
+  --c-purple:  #C844DC;
+  --c-violet:  #9A47E2;
+  --c-indigo:  #7155FA;
+  --c-blue:    #3B62FB;
+  --c-sky:     #1D95E7;
+  --c-teal:    #0FB1C0;
+  --c-green:   #0DB595;
+  --c-kelly:   #0BA45D;
+  --c-lime:    #5DB41F;
+  --c-chartreuse: #A3C400;
+  --c-yellow:  #F5C700;
+  --c-orange:  #FFA213;
+
+  /* =========================================================
+     NEUTRALS — Spectrum-aligned greys for product surfaces.
+     The Brand Guide uses only red/black/white for marketing,
+     but Adobe's product UI (Spectrum) relies on these greys;
+     we include them so UI kits feel native.
+     ========================================================= */
+  --gray-50:  #FFFFFF;
+  --gray-75:  #FAFAFA;
+  --gray-100: #F5F5F5;
+  --gray-200: #EAEAEA;
+  --gray-300: #E1E1E1;
+  --gray-400: #CACACA;
+  --gray-500: #B3B3B3;
+  --gray-600: #8E8E8E;
+  --gray-700: #6E6E6E;
+  --gray-800: #4B4B4B;
+  --gray-900: #2C2C2C;
+  --gray-1000: #000000;
+
+  /* =========================================================
+     SEMANTIC FOREGROUND / BACKGROUND
+     ========================================================= */
+  --fg-1: var(--gray-1000);          /* Primary text on light */
+  --fg-2: var(--gray-800);           /* Secondary text */
+  --fg-3: var(--gray-700);           /* Tertiary / captions */
+  --fg-4: var(--gray-600);           /* Disabled / placeholder */
+  --fg-inverse: var(--adobe-white);  /* Text on dark / red */
+  --fg-accent: var(--adobe-red);     /* Links, active labels (limited use) */
+
+  --bg-1: var(--adobe-white);        /* Page */
+  --bg-2: var(--gray-75);            /* Subdued surface */
+  --bg-3: var(--gray-100);           /* Card / inset */
+  --bg-4: var(--gray-200);           /* Hover surface */
+  --bg-inverse: var(--adobe-black);  /* Dark mode page */
+
+  /* Semantic status (from "Meaning through color" guidance, BG p.47) */
+  --status-informative: var(--c-sky);
+  --status-positive:    var(--c-kelly);
+  --status-notice:      var(--c-orange);
+  --status-negative:    var(--adobe-red);
+
+  /* =========================================================
+     BORDER / RADIUS / SHADOW
+     Adobe marketing surfaces are tight and geometric — minimal
+     radius on marketing (0–4px), slightly more on product cards
+     (8–16px). Shadows are soft, never theatrical.
+     ========================================================= */
+  --border-subtle: var(--gray-200);
+  --border-default: var(--gray-300);
+  --border-strong: var(--gray-500);
+
+  --radius-0: 0px;
+  --radius-1: 4px;       /* buttons, inputs */
+  --radius-2: 8px;       /* cards */
+  --radius-3: 12px;      /* large cards */
+  --radius-4: 16px;      /* hero tiles */
+  --radius-pill: 999px;
+
+  --shadow-1: 0 1px 2px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.04);
+  --shadow-2: 0 2px 8px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
+  --shadow-3: 0 8px 24px rgba(0,0,0,0.10), 0 2px 6px rgba(0,0,0,0.06);
+  --shadow-4: 0 24px 48px rgba(0,0,0,0.14), 0 4px 12px rgba(0,0,0,0.06);
+
+  /* =========================================================
+     SPACING — 4px base grid
+     ========================================================= */
+  --space-0:   0px;
+  --space-25:  2px;
+  --space-50:  4px;
+  --space-75:  8px;
+  --space-100: 12px;
+  --space-150: 16px;
+  --space-200: 20px;
+  --space-300: 24px;
+  --space-400: 32px;
+  --space-500: 40px;
+  --space-600: 48px;
+  --space-700: 64px;
+  --space-800: 80px;
+  --space-900: 96px;
+  --space-1000: 128px;
+
+  /* =========================================================
+     TYPOGRAPHY — "Adobe Clean is our proprietary typeface and
+     should be used across everything we do." — BG p.7
+     Only Black, ExtraBold, Bold, Regular, SemiLight are used
+     to represent the brand. — BG p.37
+     ========================================================= */
+  --font-sans: "Adobe Clean", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-cond: "Adobe Clean Cond", "Adobe Clean", sans-serif;
+  --font-semicond: "Adobe Clean SemiCn", "Adobe Clean", sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+  /* Weights — the 5 brand-sanctioned weights */
+  --w-semilight: 350;
+  --w-regular:   400;
+  --w-bold:      700;
+  --w-extrabold: 800;
+  --w-black:     900;
+
+  /* Display scale (per BG hierarchy-by-size: body = C/4) */
+  --fs-display-xl: 110px;
+  --fs-display-l:  72px;
+  --fs-display-m:  56px;
+  --fs-display-s:  44px;
+  --fs-h1:         40px;
+  --fs-h2:         32px;
+  --fs-h3:         24px;
+  --fs-h4:         20px;
+  --fs-h5:         18px;
+  --fs-body-lg:    18px;
+  --fs-body:       16px;
+  --fs-body-sm:    14px;
+  --fs-caption:    12px;
+  --fs-micro:      11px;
+
+  /* Line-height — "as the type gets larger, it should have less line spacing" */
+  --lh-display: 0.9;   /* 90% for headlines, per BG p.41 */
+  --lh-subhead: 1.1;   /* 110% */
+  --lh-body:    1.5;   /* 150% on web, per BG p.41 */
+  --lh-tight:   1.2;
+
+  /* Tracking (letter-spacing) — headlines -20 (thousandths of em) = -0.02em */
+  --tracking-display: -0.02em;
+  --tracking-subhead: -0.02em;
+  --tracking-body:    0;
+  --tracking-pull:    -0.01em;
+}
+
+/* =========================================================
+   SEMANTIC TYPE CLASSES
+   ========================================================= */
+
+html, body {
+  font-family: var(--font-sans);
+  font-weight: var(--w-regular);
+  color: var(--fg-1);
+  background: var(--bg-1);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+.t-display-xl, h1.display, .headline-xl {
+  font-family: var(--font-sans);
+  font-weight: var(--w-black);
+  font-size: var(--fs-display-xl);
+  line-height: var(--lh-display);
+  letter-spacing: var(--tracking-display);
+}
+.t-display-l, .headline-l {
+  font-family: var(--font-sans);
+  font-weight: var(--w-black);
+  font-size: var(--fs-display-l);
+  line-height: var(--lh-display);
+  letter-spacing: var(--tracking-display);
+}
+.t-display-m, .headline-m, h1 {
+  font-family: var(--font-sans);
+  font-weight: var(--w-black);
+  font-size: var(--fs-display-m);
+  line-height: var(--lh-display);
+  letter-spacing: var(--tracking-display);
+}
+.t-display-s, .headline-s, h2 {
+  font-family: var(--font-sans);
+  font-weight: var(--w-extrabold);
+  font-size: var(--fs-display-s);
+  line-height: var(--lh-subhead);
+  letter-spacing: var(--tracking-subhead);
+}
+.t-h3, h3 {
+  font-family: var(--font-sans);
+  font-weight: var(--w-bold);
+  font-size: var(--fs-h3);
+  line-height: var(--lh-subhead);
+  letter-spacing: var(--tracking-subhead);
+}
+.t-h4, h4 {
+  font-family: var(--font-sans);
+  font-weight: var(--w-bold);
+  font-size: var(--fs-h4);
+  line-height: var(--lh-subhead);
+}
+.t-h5, h5 {
+  font-family: var(--font-sans);
+  font-weight: var(--w-bold);
+  font-size: var(--fs-h5);
+  line-height: var(--lh-subhead);
+}
+.t-body, p {
+  font-family: var(--font-sans);
+  font-weight: var(--w-regular);
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+}
+.t-body-lg {
+  font-size: var(--fs-body-lg);
+  line-height: var(--lh-body);
+}
+.t-body-sm, small {
+  font-size: var(--fs-body-sm);
+  line-height: var(--lh-body);
+}
+.t-caption {
+  font-size: var(--fs-caption);
+  line-height: 1.4;
+  color: var(--fg-3);
+}
+.t-pullquote {
+  font-family: var(--font-sans);
+  font-weight: var(--w-semilight);
+  font-size: var(--fs-h2);
+  line-height: var(--lh-body);
+  letter-spacing: var(--tracking-pull);
+}
+.t-eyebrow {
+  font-family: var(--font-sans);
+  font-weight: var(--w-bold);
+  font-size: var(--fs-body-sm);
+  letter-spacing: 0.02em;
+  color: var(--adobe-red);
+}
+code, kbd, .t-mono {
+  font-family: var(--font-mono);
+  font-size: 0.92em;
+}
+
+/* =========================================================
+   UTILITY — Headline alt-g style + OpenType optical kerning
+   "always use the stylistic alternate lowercase g" — BG p.40
+   ========================================================= */
+.headline-xl, .headline-l, .headline-m, .headline-s,
+.t-display-xl, .t-display-l, .t-display-m, .t-display-s,
+h1, h2, h3 {
+  font-feature-settings: "ss01", "kern";
+  font-kerning: normal;
+}

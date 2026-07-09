@@ -1,0 +1,110 @@
+{
+  "title": "CHRISTUS Health — Catalyst POV",
+  "subtitle": "Adobe Amplify | Confidential",
+  "author": "Adobe Amplify",
+  "confidential": true,
+  "slides": [
+    {
+      "layout": "catalyst-title",
+      "customer": "CHRISTUS Health",
+      "business_issue": "Extending the healing ministry demands a new kind of data-driven, consumer-first experience — one that meets 7 million patients when, where, and how they need care.",
+      "big_idea": "Adobe enables CHRISTUS Health to unify its newly integrated Epic data with consumer digital intelligence — powering personalized, HIPAA-compliant care journeys that drive preventive utilization, deepen patient loyalty, and position CHRISTUS as the undisputed digital-first health system across Texas, Louisiana, New Mexico, and Latin America."
+    },
+    {
+      "layout": "catalyst-3col",
+      "title": "The opportunity: CHRISTUS has the data — now it needs the intelligence.",
+      "columns": [
+        {
+          "header": "Company objectives",
+          "header_color": "#EB1000",
+          "bullets": [
+            { "text": "Serve 7M+ patients annually across TX, LA, NM and Latin America with a superior digital-first experience." },
+            { "text": "Complete CONNECT 2025: make telehealth and digital scheduling a growth centerpiece, meeting patients 'when, where, and how it's most convenient.'" },
+            { "text": "Sustain 8%+ EBITDA margins amid Medicare reimbursement headwinds while investing in AI-driven care (Fitch A+ stable, 2026)." },
+            { "text": "Accelerate AI-enabled early detection and preventive care utilization by capitalizing on the newly unified Epic data foundation." },
+            { "text": "Achieve 'One CHRISTUS' digital brand — sustaining #1–2 market position across all regions as retail health (CVS, Amazon) expands into Texas." }
+          ]
+        },
+        {
+          "header": "Challenges blocking progress",
+          "header_color": "#1A1A1A",
+          "bullets": [
+            { "text": "Clinical data is unified in Epic — but consumer, marketing, and health-plan data remain siloed, preventing a true 360° patient view." },
+            { "text": "Digital personalization is rules-based only: Sitecore CMS delivers location-aware content but has no AI-driven journey orchestration or real-time activation." },
+            { "text": "No enterprise CDP: patient outreach is campaign-by-campaign, not behavior-triggered — missing high-intent moments like abandoned scheduling or post-discharge gaps." },
+            { "text": "The 48% organic web traffic lift from the 2024 redesign is not yet converting to appointments at full potential — no A/B testing or personalization engine in place." },
+            { "text": "HIPAA-compliant first-party data activation is complex; industry-wide OCR enforcement on web tracking has created compliance exposure that must be architecturally resolved." }
+          ]
+        },
+        {
+          "header": "Adobe differentiated solution",
+          "header_color": "#0FB1C0",
+          "bullets": [
+            { "bold_lead": "Real-Time CDP: ", "text": "Unify Epic EHR, health plan, web, and app data into a HIPAA-compliant 360° patient profile — the single architecture Salesforce Marketing Cloud cannot match in healthcare." },
+            { "bold_lead": "Journey Optimizer: ", "text": "Trigger automated, personalized care journeys at scale — post-discharge follow-ups, preventive screening nudges, open enrollment campaigns — across 7M patients." },
+            { "bold_lead": "Customer Journey Analytics: ", "text": "Connect digital touchpoints to appointment bookings and care outcomes, giving VP Marketing Jeff Stewart true cross-channel attribution for the first time." },
+            { "bold_lead": "Adobe Target: ", "text": "A/B test and AI-personalize ChristusHealth.org — turning the hard-won 48% traffic lift into measurably higher appointment conversions." },
+            { "bold_lead": "Proof: ", "text": "Comparable nonprofit health systems using Adobe's data and journeys suite have achieved 15–25% lift in online scheduling conversion and 30%+ improvement in care-gap closure." }
+          ]
+        }
+      ]
+    },
+    {
+      "layout": "catalyst-path-value",
+      "title": "Path to power, business value & why now.",
+      "left": {
+        "header": "Path to power",
+        "header_color": "#EB1000",
+        "execs": [
+          {
+            "name": "Jon Manis",
+            "title": "SVP & Chief Information Officer  •  Lead champion",
+            "accent_color": "#EB1000",
+            "mandate": "Publicly mandates that CHRISTUS 'must become the technology company that delivers care — when, where, and how consumers need it.' Actively seeking bold AI and data projects in 2026. Primary sponsor for RT-CDP + AJO."
+          },
+          {
+            "name": "Jeff Stewart",
+            "title": "VP Strategic Marketing  •  Primary buyer",
+            "accent_color": "#0FB1C0",
+            "mandate": "Built the 48% organic traffic lift and wants to sustain it through AI-driven personalization. Directly motivated to adopt Analytics + Target + AJO to convert traffic to appointments."
+          },
+          {
+            "name": "Stuart James",
+            "title": "VP COO & Deputy CIO  •  Key evaluator",
+            "accent_color": "#1A1A1A",
+            "mandate": "Led the 3-year Epic unification. Insists 'data must be on point before AI can deliver.' Will scrutinize integration architecture and data governance rigor. Win him with the CDP story."
+          },
+          {
+            "name": "Dr. Sam Bagchi",
+            "title": "EVP & Chief Clinical Officer  •  Clinical authority",
+            "accent_color": "#5F5F5F",
+            "mandate": "Sponsored Epic + ambient AI rollout. Will support data and journey solutions that demonstrably improve patient access and close care gaps."
+          }
+        ]
+      },
+      "right": {
+        "header": "Business value + why now",
+        "header_color": "#1A1A1A",
+        "values": [
+          {
+            "heading": "Preventive care at scale.",
+            "body": "CHRISTUS' own campaigns demonstrate what's possible: a breast cancer HRA initiative connected 520 patients to screening, including 42 new cancer diagnoses. With Adobe Journey Optimizer, scale data-driven programs like this system-wide across 7M patients — automatically."
+          },
+          {
+            "heading": "Convert traffic to appointments.",
+            "body": "The 2024 redesign drove a 48% lift in organic sessions. Adobe Target + Journey Optimizer turns that attention into action — industry benchmarks show 15–25% improvement in online scheduling conversion when AI personalization is applied to healthcare digital front doors."
+          },
+          {
+            "heading": "Marketing efficiency under margin pressure.",
+            "body": "With Fitch flagging FY2026 Medicare reimbursement cuts, Adobe's unified platform reduces per-patient outreach cost through centralized omnichannel execution while improving reach — and gives the CFO clear attribution between marketing spend and service-line volumes."
+          }
+        ],
+        "why_now": {
+          "label": "⚡ Why now",
+          "bg_color": "#1A1A2E",
+          "body": "Epic went fully live March 2025 — CHRISTUS' data is ready NOW. 2026 is the optimization year. Medicare cuts are tightening margins. Retail health is expanding in Texas. CIO Manis is publicly calling for bold digital projects. Propose a 90-day RT-CDP + AJO pilot before FY2027 planning locks."
+        }
+      }
+    }
+  ]
+}

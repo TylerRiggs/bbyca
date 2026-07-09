@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<!--
+  Adobe-branded HTML starter — Claude-Design-level fidelity.
+  Copy this file and the ../adobe-design-system.css, ../fonts/, and ../logos/
+  folders together so the relative paths resolve. Swap the content, keep the
+  structure and the brand rules. NEVER replace the <img> wordmark with a
+  hand-drawn logo (see references/logo-usage.md).
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Adobe</title>
+<link rel="stylesheet" href="../adobe-design-system.css">
+<style>
+  * { box-sizing: border-box; margin: 0; }
+  body {
+    font-family: "Adobe Clean", system-ui, -apple-system, sans-serif;
+    color: var(--fg-1); background: var(--bg-1);
+    line-height: 1.5; -webkit-font-smoothing: antialiased;
+  }
+  /* The mandatory left red thread */
+  .page { position: relative; max-width: 1100px; margin: 0 auto;
+          padding: 56px 64px 96px; }
+  .page::before { content: ""; position: fixed; left: 0; top: 0; bottom: 0;
+                  width: 10px; background: var(--adobe-red); }
+
+  header { display: flex; align-items: center; justify-content: space-between;
+           margin-bottom: 72px; }
+  header img { height: 26px; }            /* approved wordmark only */
+  header .eyebrow { font-size: 13px; font-weight: 700; color: var(--fg-3);
+                    text-transform: none; }
+
+  /* Headline = Adobe Clean at weight 900 (that IS "Adobe Clean Black"). */
+  h1 { font-family: "Adobe Clean", system-ui, sans-serif;
+       font-weight: 900; font-size: clamp(40px, 6vw, 76px);
+       letter-spacing: -.02em; line-height: .92; max-width: 16ch; }
+  h1 .accent { color: var(--adobe-red); }
+  .lead { font-size: 22px; color: var(--fg-2); max-width: 52ch;
+          margin-top: 24px; }
+
+  /* The Lens — rounded-rectangle image viewport */
+  .lens { margin: 48px 0; border-radius: 24px; overflow: hidden;
+          aspect-ratio: 16/7; background: var(--gray-100); }
+  .lens img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+  h2 { font-family: "Adobe Clean", sans-serif; font-weight: 800;
+       font-size: 30px; letter-spacing: -.01em; margin: 56px 0 8px; }
+  .subhead { font-weight: 700; color: var(--adobe-red); font-size: 15px;
+             text-transform: none; margin-bottom: 6px; }
+  p { font-size: 17px; color: var(--fg-2); max-width: 64ch; margin-top: 12px; }
+
+  .cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px;
+           margin-top: 28px; }
+  .card { background: var(--bg-3); border-radius: 16px; padding: 28px; }
+  .card h3 { font-weight: 700; font-size: 19px; }
+  .card p { font-size: 15px; }
+
+  footer { margin-top: 96px; padding-top: 16px; border-top: 1px solid var(--gray-300);
+           font-size: 12px; color: var(--gray-footer, #191919); display: flex;
+           justify-content: space-between; }
+</style>
+</head>
+<body>
+  <div class="page">
+    <header>
+      <!-- Approved asset ONLY. Red on light, white on dark. -->
+      <img src="../logos/Adobe_Wordmark_RGB_Red.svg" alt="Adobe">
+      <span class="eyebrow">Experience Cloud</span>
+    </header>
+
+    <h1>Personalize at scale. <span class="accent">Make every moment count.</span></h1>
+    <p class="lead">A conversational, human headline in sentence case — confident,
+       never corporate. End on a period or a question mark.</p>
+
+    <div class="lens">
+      <!-- Optional hero image, cropped into the Lens. Omit if none. -->
+      <img src="" alt="" onerror="this.parentElement.style.display='none'">
+    </div>
+
+    <p class="subhead">The opportunity</p>
+    <h2>One idea per section, stated plainly.</h2>
+    <p>Body copy in Adobe Clean Regular at a comfortable measure. Lead with
+       generous space; let a single dominant headline carry each view.</p>
+
+    <div class="cards">
+      <div class="card"><h3>Connect data</h3><p>Real-time profiles across every channel.</p></div>
+      <div class="card"><h3>Orchestrate journeys</h3><p>AI-assisted next-best actions.</p></div>
+      <div class="card"><h3>Measure impact</h3><p>Decisioning tied to outcomes.</p></div>
+    </div>
+
+    <footer>
+      <span>© 2026 Adobe. All Rights Reserved. Adobe Confidential.</span>
+      <span>Adobe</span>
+    </footer>
+  </div>
+</body>
+</html>

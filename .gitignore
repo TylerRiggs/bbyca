@@ -1,0 +1,13 @@
+# Licensed Adobe assets — internal-only, never committed to a public repo
+# (see adobe-presentation/SKILL.md "Packaging & distribution").
+# Restore them locally by copying from the distributed .skill/.zip bundle:
+#   unzip adobepresentationskill.zip 'adobe-presentation/assets/fonts/*' 'adobe-presentation/assets/logos/*'
+adobe-presentation/assets/fonts/*.otf
+adobe-presentation/assets/logos/*
+
+# Build output
+*.pptx
+*.docx
+!adobe-presentation/templates/*.pptx
+!adobe-presentation/templates/*.docx
+__pycache__/

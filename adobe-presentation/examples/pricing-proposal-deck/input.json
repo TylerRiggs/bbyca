@@ -1,0 +1,68 @@
+{
+  "title": "Adobe partnership proposal",
+  "subtitle": "Three-year investment options",
+  "confidential": true,
+  "slides": [
+    { "layout": "title-red",
+      "title": "A partnership built for what's next.",
+      "subtitle": "Three-year investment options  |  July 2026" },
+
+    { "layout": "table",
+      "title": "Option 1: Bundled package.",
+      "kicker": "LLM Optimizer + Semrush AIO + Brand Concierge — full-suite solution",
+      "columns": ["Product / Service", "Year 1", "Year 2", "Year 3"],
+      "rows": [
+        ["LLM Optimizer + Semrush AIO", "$95,000", "$95,000", "$95,000"],
+        ["Brand Concierge", "$55,000", "$55,000", "$55,000"]
+      ],
+      "total_row": ["Total annual investment", "$150,000", "$150,000", "$150,000"],
+      "highlight": {
+        "label": "3-year total investment",
+        "value": "$450,000",
+        "note": "Consistent pricing across all contract years — no escalations. Saves $50,000 per year vs. standalone."
+      },
+      "notice": "Pricing is contingent upon contract execution by July 30, 2026." },
+
+    { "layout": "stat-row",
+      "title": "What the bundle is worth.",
+      "kicker": "Value at a glance",
+      "stats": [
+        { "value": "$450K", "label": "3-year total", "note": "Flat pricing, no annual escalations" },
+        { "value": "$150K", "label": "Savings vs. standalone", "note": "$50,000 per year across the term" },
+        { "value": "3", "label": "Products, one contract", "note": "LLM Optimizer, Semrush AIO, Brand Concierge" }
+      ] },
+
+    { "layout": "comparison",
+      "title": "Bundled vs. standalone.",
+      "left": { "header": "Standalone",
+        "bullets": ["$200,000 per year across separate contracts",
+                    "Three renewal cycles to manage",
+                    "Pricing subject to annual escalations"] },
+      "right": { "header": "Bundled (recommended)",
+        "bullets": ["$150,000 per year on one contract",
+                    "Single renewal, single business owner",
+                    "Rate locked for all three years"] },
+      "notice": "Bundle rate expires with the July 30, 2026 signature deadline." },
+
+    { "layout": "process",
+      "title": "Path to signature.",
+      "steps": [
+        { "label": "Week of Jul 13", "title": "Security review", "desc": "Legal and InfoSec packet delivered" },
+        { "label": "Week of Jul 20", "title": "Commercial terms", "desc": "Final redlines and order form" },
+        { "label": "By Jul 30", "title": "Signature", "desc": "Bundle pricing locked" },
+        { "label": "August", "title": "Kickoff", "desc": "Provisioning and enablement begin" }
+      ] },
+
+    { "layout": "cards",
+      "title": "What's included.",
+      "cards": [
+        { "header": "LLM Optimizer", "body": "Monitor and improve how AI assistants represent the brand across answers and citations." },
+        { "header": "Semrush AIO", "body": "AI-visibility analytics: share of voice, prompt coverage, and competitive benchmarks." },
+        { "header": "Brand Concierge", "body": "Guided, on-brand conversational experiences for customers on owned channels." }
+      ] },
+
+    { "layout": "thank-you",
+      "title": "Thank you.",
+      "contact": "First Last  |  first.last@adobe.com" }
+  ]
+}

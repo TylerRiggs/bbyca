@@ -1,0 +1,113 @@
+{
+  "title": "Discovery readout — Acme Co.",
+  "subtitle": "Findings from the Q2 personalization workshop, plus the recommended next 90 days.",
+  "doc_type": "one-pager",
+  "confidential": true,
+  "include_cover_block": true,
+  "include_trademark_page": false,
+  "sections": [
+    {
+      "type": "h1",
+      "text": "What we heard."
+    },
+    {
+      "type": "body",
+      "text": "Across five sessions with marketing, IT, and digital leadership, three themes came up in every room: personalization is stuck at the landing-page layer, cross-channel orchestration takes weeks to ship, and AI investments to date haven't moved a metric anyone tracks."
+    },
+    {
+      "type": "callout",
+      "text": "67% of in-flight personalization work today lives outside any orchestration platform. That's where the 'weeks to launch' lives."
+    },
+    {
+      "type": "h2",
+      "text": "Personalization stalled at the landing-page layer."
+    },
+    {
+      "type": "body",
+      "text": "The current toolset reaches first-touch conversion well. Below that — email follow-up, in-app messaging, paid retargeting — the experience reverts to batch. Customers feel the seam."
+    },
+    {
+      "type": "h2",
+      "text": "Cross-channel orchestration is brittle."
+    },
+    {
+      "type": "body",
+      "text": "One change to a segment ripples through five tools. Each tool owns its own copy of the customer. Each takes a different SLA to update."
+    },
+    {
+      "type": "h2",
+      "text": "AI pilots ran. ROI didn't."
+    },
+    {
+      "type": "body",
+      "text": "Two vendor pilots delivered model accuracy improvements but couldn't tie them to outcomes that the CMO tracks. The CFO has paused new AI funding pending demonstrable revenue lift."
+    },
+    {
+      "type": "h1",
+      "text": "What we recommend."
+    },
+    {
+      "type": "h3",
+      "text": "Phase 1 — Unify the profile (weeks 1–6)"
+    },
+    {
+      "type": "bullets",
+      "items": [
+        { "text": "Stand up Adobe Real-Time CDP with the three highest-value data sources.", "level": 0 },
+        { "text": "Migrate the top 10 marketing segments to Real-Time CDP and retire duplicates.", "level": 0 },
+        { "text": "Connect to existing email and web personalization tools.", "level": 1 }
+      ]
+    },
+    {
+      "type": "h3",
+      "text": "Phase 2 — Activate one journey (weeks 7–10)"
+    },
+    {
+      "type": "bullets",
+      "items": [
+        { "text": "Choose the abandoned-cart-to-renewal journey as the pilot.", "level": 0 },
+        { "text": "Use Adobe Journey Optimizer to deliver decisions in real time across email, push, and web.", "level": 0 }
+      ]
+    },
+    {
+      "type": "h3",
+      "text": "Phase 3 — Measure and expand (weeks 11–12)"
+    },
+    {
+      "type": "bullets",
+      "items": [
+        { "text": "Connect Adobe Customer Journey Analytics to the pilot journey.", "level": 0 },
+        { "text": "Define the three KPIs the CMO will use to greenlight phase 4.", "level": 0 }
+      ]
+    },
+    {
+      "type": "h1",
+      "text": "Investment and timeline."
+    },
+    {
+      "type": "table",
+      "header": ["Phase", "Duration", "Adobe products", "Internal effort"],
+      "rows": [
+        ["Phase 1 — Profile",   "6 weeks",  "Real-Time CDP",                    "1 PM, 2 engineers"],
+        ["Phase 2 — Activate",  "4 weeks",  "Journey Optimizer",                "1 PM, 1 marketer"],
+        ["Phase 3 — Measure",   "2 weeks",  "Customer Journey Analytics",       "1 analyst"]
+      ]
+    },
+    {
+      "type": "callout",
+      "text": "Conservative model: 12 weeks to first measurable outcome. Stretch model: 8 weeks if data sources are clean."
+    },
+    {
+      "type": "h1",
+      "text": "Next steps."
+    },
+    {
+      "type": "bullets",
+      "items": [
+        { "text": "Confirm the data sources for Phase 1 by Friday.", "level": 0 },
+        { "text": "Schedule the technical architecture review for the following week.", "level": 0 },
+        { "text": "Adobe Solutions Consulting will draft the statement of work after data sources are confirmed.", "level": 0 }
+      ]
+    }
+  ]
+}

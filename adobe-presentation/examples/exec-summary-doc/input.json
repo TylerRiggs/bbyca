@@ -1,0 +1,64 @@
+{
+  "title": "Q2 personalization program — executive summary.",
+  "subtitle": "Recommendation to the Acme Co. operating committee.",
+  "doc_type": "exec-summary",
+  "confidential": true,
+  "include_cover_block": true,
+  "include_trademark_page": true,
+  "sections": [
+    {
+      "type": "h1",
+      "text": "Recommendation."
+    },
+    {
+      "type": "body",
+      "text": "Adopt Adobe Experience Cloud as the foundation for cross-channel personalization. Begin with a 90-day pilot targeting the abandoned-cart-to-renewal journey. Measure with Adobe Customer Journey Analytics. Expand to two additional journeys in 2026 H2."
+    },
+    {
+      "type": "callout",
+      "text": "Pilot ROI target: 4× lift on the targeted journey by week 12. Conservative case: 2.5× lift. Both pencils-out positively against the $1.4M annual investment."
+    },
+    {
+      "type": "h1",
+      "text": "Why now."
+    },
+    {
+      "type": "body",
+      "text": "Three macro forces converge in 2026. First, third-party cookie deprecation removes the last shortcut for cross-site personalization. Second, generative AI changed customer expectations for one-to-one experiences. Third, the CFO's mandate for measurable AI returns means whatever we run next must close the loop on revenue."
+    },
+    {
+      "type": "h1",
+      "text": "What success looks like."
+    },
+    {
+      "type": "table",
+      "header": ["Metric", "Baseline (Q1)", "12-week target", "12-month target"],
+      "rows": [
+        ["Email-to-conversion rate",  "1.4%",  "3.8%",   "5.5%"],
+        ["Cost per acquisition",       "$92",   "$71",    "$58"],
+        ["Time from idea to live",     "21 days","< 48 hrs","< 6 hrs"],
+        ["Cross-channel touchpoints",  "1.2 avg","2.4 avg","3.5 avg"]
+      ]
+    },
+    {
+      "type": "h1",
+      "text": "Risks and mitigations."
+    },
+    {
+      "type": "bullets",
+      "items": [
+        { "text": "Data quality. Mitigation: Phase 1 includes a data audit before activation.", "level": 0 },
+        { "text": "Change management. Mitigation: weekly enablement sessions with marketing ops.", "level": 0 },
+        { "text": "Vendor lock-in. Mitigation: standards-based integrations; no proprietary data formats.", "level": 0 }
+      ]
+    },
+    {
+      "type": "h1",
+      "text": "Decision requested."
+    },
+    {
+      "type": "body",
+      "text": "Operating committee approval to fund Phase 1 ($340K, 6 weeks) with go/no-go gate at week 6. Full program funding to be confirmed at the August review."
+    }
+  ]
+}
