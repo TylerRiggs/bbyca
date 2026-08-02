@@ -1,3 +1,14 @@
+# bbyca
+
+Tools in this repository:
+
+- [`microsite-editor/`](microsite-editor/README.md) — a self-contained,
+  no-install WYSIWYG editor (`editor.html`) that lets non-technical sellers
+  visually edit AI-generated HTML microsites and save a clean file that can
+  round-trip back into Claude.
+- [`adobe-presentation/`](adobe-presentation/SKILL.md) — a Claude skill for
+  Adobe-branded collateral (details below).
+
 # adobe-presentation skill
 
 A Claude skill that produces authentically Adobe-branded `.pptx`, `.docx`, and

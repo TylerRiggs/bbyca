@@ -1,0 +1,2459 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Microsite Editor</title>
+<style>
+/* ============================================================
+   Microsite Editor — editor chrome styles
+   All editor styles live in the PARENT document. The only thing
+   ever injected into the loaded microsite's iframe is a single
+   <style id="msed-style"> element (stripped on export).
+   ============================================================ */
+:root{
+  --bg:#eef0f4;
+  --chrome:#ffffff;
+  --border:#e3e6ec;
+  --text:#1f2430;
+  --muted:#6b7280;
+  --accent:#4f46e5;
+  --accent-soft:#eef2ff;
+  --accent-border:#c7d2fe;
+  --danger:#dc2626;
+  --shadow:0 6px 24px rgba(16,24,40,.14), 0 1px 3px rgba(16,24,40,.10);
+  --shadow-sm:0 2px 8px rgba(16,24,40,.10);
+  --radius:10px;
+  --font:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  font-family:var(--font);
+  font-size:14px;
+  color:var(--text);
+  background:var(--bg);
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+}
+button{font-family:inherit;font-size:inherit;color:inherit;background:none;border:none;cursor:pointer}
+input,select{font-family:inherit;font-size:inherit;color:inherit}
+[hidden]{display:none !important}
+
+/* ---------- Top bar ---------- */
+#topbar{
+  height:52px;flex:0 0 52px;
+  background:var(--chrome);
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:6px;
+  padding:0 12px;
+  position:relative;z-index:60;
+}
+#brand{display:flex;align-items:center;gap:8px;font-weight:650;font-size:14.5px;letter-spacing:.1px;margin-right:6px;white-space:nowrap}
+#brand .logo{width:24px;height:24px;border-radius:7px;background:linear-gradient(135deg,#6366f1,#8b5cf6);display:inline-flex;align-items:center;justify-content:center;color:#fff;font-size:13px;font-weight:700}
+#fileMeta{display:flex;align-items:center;gap:7px;min-width:0;padding:5px 10px;border-radius:8px;background:#f5f6f9;border:1px solid var(--border);max-width:300px}
+#fileMeta[hidden]{display:none}
+#fileNameLabel{font-weight:520;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:13px;color:#3b4252}
+#dirtyDot{width:8px;height:8px;border-radius:50%;background:#f59e0b;flex:0 0 8px;box-shadow:0 0 0 3px #fef3c7}
+#dirtyDot[data-clean]{background:#10b981;box-shadow:0 0 0 3px #d1fae5}
+.tb-spacer{flex:1}
+.tb-sep{width:1px;height:24px;background:var(--border);margin:0 4px;flex:0 0 1px}
+
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:6px;
+  height:34px;padding:0 12px;border-radius:8px;
+  font-weight:520;color:#3b4252;white-space:nowrap;
+  transition:background .12s;
+}
+.btn:hover{background:#f0f1f5}
+.btn:active{background:#e7e9ef}
+.btn[disabled]{opacity:.38;pointer-events:none}
+.btn svg{width:17px;height:17px;flex:0 0 auto}
+.btn-icon{width:34px;padding:0}
+.btn-primary{
+  background:var(--accent);color:#fff;font-weight:600;padding:0 16px;
+  box-shadow:0 1px 2px rgba(79,70,229,.4);
+}
+.btn-primary:hover{background:#4338ca}
+.btn-primary:active{background:#3730a3}
+.btn-primary svg{color:#fff}
+
+.seg{display:flex;background:#f0f1f5;border-radius:9px;padding:3px;gap:2px}
+.seg button{
+  height:28px;padding:0 12px;border-radius:7px;font-weight:550;color:var(--muted);
+  display:inline-flex;align-items:center;gap:6px;
+}
+.seg button svg{width:15px;height:15px}
+.seg button.on{background:#fff;color:var(--text);box-shadow:0 1px 3px rgba(16,24,40,.14)}
+
+/* ---------- Find bar ---------- */
+#findBar{
+  flex:0 0 auto;background:var(--chrome);border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:8px;padding:8px 12px;z-index:55;flex-wrap:wrap;
+}
+#findBar input[type=text]{
+  height:32px;padding:0 10px;border:1px solid var(--border);border-radius:8px;width:220px;outline:none;
+}
+#findBar input[type=text]:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+#findCount{color:var(--muted);min-width:64px;font-size:13px;text-align:center}
+#findBar .btn{height:32px}
+#findCase.on{background:var(--accent-soft);color:var(--accent)}
+
+/* ---------- Stage / canvas ---------- */
+#stage{flex:1;position:relative;display:flex;overflow:hidden}
+#stageInner{flex:1;display:flex;justify-content:center;overflow:hidden;padding:0}
+#frameBox{position:relative;flex:1;background:#fff;min-width:0}
+#stageInner.mobile{padding:18px 0;background:var(--bg)}
+#stageInner.mobile #frameBox{
+  flex:0 0 390px;max-width:390px;border-radius:18px;overflow:hidden;
+  box-shadow:var(--shadow);border:1px solid var(--border);
+}
+#canvas{position:absolute;inset:0;width:100%;height:100%;border:none;background:#fff;display:block}
+#overlay{position:absolute;inset:0;pointer-events:none;overflow:hidden;z-index:5}
+
+/* overlay boxes */
+.ov-box{position:absolute;pointer-events:none;border-radius:3px}
+#hoverBox{border:1.5px solid rgba(79,70,229,.5);background:rgba(79,70,229,.045)}
+#hoverLabel{
+  position:absolute;pointer-events:none;
+  background:rgba(79,70,229,.92);color:#fff;font-size:11px;font-weight:600;
+  padding:2px 7px;border-radius:5px;white-space:nowrap;letter-spacing:.2px;
+}
+#selBox{border:2px solid var(--accent);box-shadow:0 0 0 1px rgba(255,255,255,.7)}
+#selBox.editing{border-style:dashed;border-color:#8b5cf6}
+#findHl{background:rgba(250,204,21,.45);border:1.5px solid #eab308;border-radius:3px}
+#dropLine{position:absolute;pointer-events:none;background:var(--accent);border-radius:2px}
+#dropLine::before{
+  content:"";position:absolute;width:9px;height:9px;border-radius:50%;
+  background:#fff;border:2.5px solid var(--accent);top:50%;left:-5px;transform:translate(-50%,-50%);
+}
+#dropLine.h::before{left:50%;top:-5px;transform:translate(-50%,-50%)}
+#dragShield{position:absolute;inset:0;pointer-events:auto;cursor:grabbing;z-index:9}
+#dragGhost{
+  position:absolute;pointer-events:none;z-index:10;
+  background:#111827;color:#fff;font-size:12px;font-weight:600;padding:5px 11px;border-radius:7px;
+  box-shadow:var(--shadow);white-space:nowrap;opacity:.92;
+}
+
+/* element toolbar (floating chip above selection) */
+#elToolbar{
+  position:absolute;pointer-events:auto;z-index:8;
+  display:flex;align-items:center;gap:1px;
+  background:#111827;border-radius:9px;padding:3px;
+  box-shadow:var(--shadow);white-space:nowrap;
+}
+#elToolbar .et-label{
+  color:#e5e7eb;font-size:11.5px;font-weight:650;padding:0 8px;letter-spacing:.2px;
+  max-width:130px;overflow:hidden;text-overflow:ellipsis;
+}
+#elToolbar button{
+  width:28px;height:28px;border-radius:6px;color:#d1d5db;
+  display:inline-flex;align-items:center;justify-content:center;
+}
+#elToolbar button:hover{background:#374151;color:#fff}
+#elToolbar button svg{width:15px;height:15px}
+#elToolbar button.danger:hover{background:#7f1d1d;color:#fecaca}
+#elToolbar .et-sep{width:1px;height:18px;background:#374151;margin:0 2px}
+#elToolbar #etDrag{cursor:grab}
+
+/* "Edit this" affordance for interactive elements */
+#editThisBtn{
+  position:absolute;pointer-events:auto;z-index:8;
+  display:inline-flex;align-items:center;gap:5px;
+  background:#fff;color:var(--accent);border:1.5px solid var(--accent-border);
+  font-size:12px;font-weight:650;padding:4px 10px;border-radius:8px;
+  box-shadow:var(--shadow-sm);cursor:pointer;
+}
+#editThisBtn:hover{background:var(--accent-soft)}
+#editThisBtn svg{width:13px;height:13px}
+
+/* image resize handles */
+.rz{
+  position:absolute;pointer-events:auto;width:11px;height:11px;border-radius:50%;
+  background:#fff;border:2px solid var(--accent);z-index:8;
+}
+.rz.nw{cursor:nwse-resize}.rz.se{cursor:nwse-resize}
+.rz.ne{cursor:nesw-resize}.rz.sw{cursor:nesw-resize}
+
+/* ---------- Text toolbar (fixed, parent doc) ---------- */
+#textToolbar{
+  position:fixed;z-index:70;
+  display:flex;align-items:center;gap:1px;
+  background:#fff;border:1px solid var(--border);border-radius:10px;padding:4px;
+  box-shadow:var(--shadow);flex-wrap:nowrap;
+}
+#textToolbar button{
+  min-width:30px;height:30px;padding:0 5px;border-radius:7px;
+  display:inline-flex;align-items:center;justify-content:center;color:#3b4252;
+}
+#textToolbar button:hover{background:#f0f1f5}
+#textToolbar button.on{background:var(--accent-soft);color:var(--accent)}
+#textToolbar button svg{width:15px;height:15px}
+#textToolbar .tt-sep{width:1px;height:20px;background:var(--border);margin:0 3px;flex:0 0 1px}
+#textToolbar select{
+  height:30px;border:none;background:#f5f6f9;border-radius:7px;padding:0 4px;font-size:12.5px;outline:none;cursor:pointer;
+}
+.colorwrap{position:relative;width:30px;height:30px;display:inline-flex;align-items:center;justify-content:center;border-radius:7px;cursor:pointer}
+.colorwrap:hover{background:#f0f1f5}
+.colorwrap input[type=color]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.colorwrap .swatchbar{position:absolute;bottom:4px;left:7px;right:7px;height:3px;border-radius:2px}
+
+/* link popover */
+#linkPop{
+  position:fixed;z-index:75;background:#fff;border:1px solid var(--border);border-radius:10px;
+  box-shadow:var(--shadow);padding:12px;width:300px;
+}
+#linkPop input[type=text]{
+  width:100%;height:34px;padding:0 10px;border:1px solid var(--border);border-radius:8px;outline:none;
+}
+#linkPop input[type=text]:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+#linkPop .row{display:flex;align-items:center;gap:8px;margin-top:10px}
+#linkPop label{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--muted);cursor:pointer}
+
+/* ---------- Side panel ---------- */
+#sidePanel{
+  position:absolute;top:12px;right:12px;bottom:12px;width:296px;z-index:40;
+  background:var(--chrome);border:1px solid var(--border);border-radius:14px;
+  box-shadow:var(--shadow);display:flex;flex-direction:column;overflow:hidden;
+}
+#spHead{display:flex;align-items:center;gap:8px;padding:13px 14px 10px;border-bottom:1px solid var(--border)}
+#spTitle{font-weight:700;font-size:14.5px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#spBody{flex:1;overflow-y:auto;padding:4px 14px 16px}
+.crumbs{display:flex;flex-wrap:wrap;gap:4px;padding:10px 0 2px}
+.crumb{
+  font-size:11.5px;font-weight:600;color:var(--muted);background:#f5f6f9;border:1px solid var(--border);
+  padding:3px 9px;border-radius:20px;cursor:pointer;
+}
+.crumb:hover{background:var(--accent-soft);color:var(--accent);border-color:var(--accent-border)}
+.crumb.cur{background:var(--accent);color:#fff;border-color:var(--accent);cursor:default}
+.p-sec{padding:13px 0;border-bottom:1px solid #f0f1f5}
+.p-sec:last-child{border-bottom:none}
+.p-sec h4{font-size:11px;font-weight:750;letter-spacing:.7px;text-transform:uppercase;color:var(--muted);margin-bottom:10px}
+.field{margin-bottom:10px}
+.field:last-child{margin-bottom:0}
+.field>label{display:block;font-size:12px;font-weight:600;color:#4b5563;margin-bottom:5px}
+.field input[type=text],.field input[type=url],.field textarea{
+  width:100%;height:33px;padding:0 10px;border:1px solid var(--border);border-radius:8px;outline:none;background:#fff;
+}
+.field textarea{height:64px;padding:8px 10px;resize:vertical;font-size:13px}
+.field input:focus,.field textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.field input[type=range]{width:100%;accent-color:var(--accent)}
+.btnrow{display:flex;gap:6px;flex-wrap:wrap}
+.pbtn{
+  flex:1;min-width:0;height:31px;padding:0 8px;border:1px solid var(--border);border-radius:8px;
+  font-size:12.5px;font-weight:600;color:#4b5563;background:#fff;white-space:nowrap;
+  display:inline-flex;align-items:center;justify-content:center;gap:5px;
+}
+.pbtn:hover{border-color:#c9cdd6;background:#f8f9fb}
+.pbtn.on{background:var(--accent-soft);border-color:var(--accent-border);color:var(--accent)}
+.pbtn.wide{flex:1 1 100%}
+.pbtn svg{width:14px;height:14px}
+.pbtn.danger{color:var(--danger)}
+.pbtn.danger:hover{background:#fef2f2;border-color:#fecaca}
+.colorfield{display:flex;align-items:center;gap:8px}
+.colorfield input[type=color]{
+  width:40px;height:31px;border:1px solid var(--border);border-radius:8px;padding:2px;background:#fff;cursor:pointer;
+}
+.colorfield .pbtn{flex:0 0 auto}
+.blockgrid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.blockgrid .pbtn{height:36px;justify-content:flex-start;padding:0 10px}
+.imgprev{
+  width:100%;height:110px;border:1px solid var(--border);border-radius:10px;background:#f5f6f9 center/contain no-repeat;
+  margin-bottom:8px;
+}
+.hint{font-size:12px;color:var(--muted);line-height:1.45}
+
+/* ---------- Dropzone / empty state ---------- */
+#dropzone{
+  position:absolute;inset:0;z-index:30;background:var(--bg);
+  display:flex;align-items:center;justify-content:center;padding:24px;
+}
+#dzCard{
+  width:min(560px,100%);background:#fff;border:2px dashed #c9cdd6;border-radius:20px;
+  padding:48px 40px;text-align:center;transition:border-color .15s, background .15s;
+}
+#dropzone.over #dzCard{border-color:var(--accent);background:var(--accent-soft)}
+#dzCard .dz-icon{
+  width:64px;height:64px;margin:0 auto 18px;border-radius:18px;
+  background:linear-gradient(135deg,#6366f1,#8b5cf6);display:flex;align-items:center;justify-content:center;
+}
+#dzCard .dz-icon svg{width:30px;height:30px;color:#fff}
+#dzCard h1{font-size:21px;font-weight:750;margin-bottom:8px}
+#dzCard>p{color:var(--muted);margin-bottom:26px;font-size:14.5px}
+.dz-steps{display:flex;gap:10px;margin-bottom:28px;text-align:left}
+.dz-step{flex:1;background:#f8f9fb;border:1px solid var(--border);border-radius:12px;padding:13px}
+.dz-step .n{
+  width:22px;height:22px;border-radius:50%;background:var(--accent);color:#fff;font-size:12px;font-weight:700;
+  display:flex;align-items:center;justify-content:center;margin-bottom:8px;
+}
+.dz-step b{display:block;font-size:13px;margin-bottom:3px}
+.dz-step span{font-size:12px;color:var(--muted);line-height:1.4;display:block}
+#dzCard .btn-primary{height:40px;font-size:14.5px;border-radius:10px;margin:0 auto;display:inline-flex}
+#dzCard .dz-or{margin-top:12px;color:var(--muted);font-size:13px}
+
+/* ---------- Toasts ---------- */
+#toasts{
+  position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:100;
+  display:flex;flex-direction:column;align-items:center;gap:8px;pointer-events:none;
+}
+.toast{
+  pointer-events:auto;display:flex;align-items:center;gap:12px;
+  background:#111827;color:#f3f4f6;padding:10px 14px;border-radius:11px;
+  box-shadow:var(--shadow);font-size:13.5px;max-width:520px;
+  animation:toastIn .18s ease-out;
+}
+@keyframes toastIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.toast.warn{background:#78350f}
+.toast.error{background:#7f1d1d}
+.toast .t-act{
+  color:#a5b4fc;font-weight:700;white-space:nowrap;padding:4px 8px;border-radius:7px;
+}
+.toast .t-act:hover{background:rgba(255,255,255,.1)}
+.toast .t-x{color:#9ca3af;width:24px;height:24px;border-radius:6px;flex:0 0 24px;font-size:15px}
+.toast .t-x:hover{background:rgba(255,255,255,.1);color:#fff}
+
+/* ---------- Modals ---------- */
+#modalRoot{position:fixed;inset:0;z-index:90;display:flex;align-items:center;justify-content:center}
+#modalRoot .backdrop{position:absolute;inset:0;background:rgba(17,24,39,.45)}
+.modal{
+  position:relative;background:#fff;border-radius:16px;box-shadow:var(--shadow);
+  width:min(480px,calc(100vw - 40px));max-height:calc(100vh - 80px);
+  display:flex;flex-direction:column;animation:toastIn .16s ease-out;
+}
+.modal.wide{width:min(560px,calc(100vw - 40px))}
+.modal-h{display:flex;align-items:center;padding:16px 20px 12px;font-size:16px;font-weight:750}
+.modal-h .btn-icon{margin-left:auto}
+.modal-b{padding:4px 20px 12px;overflow-y:auto;line-height:1.5}
+.modal-f{display:flex;justify-content:flex-end;gap:8px;padding:12px 20px 16px}
+.modal-f .btn{border:1px solid var(--border)}
+.modal-f .btn-primary{border:none}
+.kbd-table{width:100%;border-collapse:collapse}
+.kbd-table td{padding:6px 4px;border-bottom:1px solid #f0f1f5;font-size:13.5px}
+.kbd-table td:last-child{text-align:right}
+kbd{
+  display:inline-block;background:#f5f6f9;border:1px solid var(--border);border-bottom-width:2px;
+  border-radius:6px;padding:1px 7px;font-family:inherit;font-size:12px;font-weight:650;color:#4b5563;margin-left:3px;
+}
+.tip-list{display:flex;flex-direction:column;gap:14px;padding:6px 0 8px}
+.tip{display:flex;gap:12px;align-items:flex-start}
+.tip .ti{
+  width:34px;height:34px;flex:0 0 34px;border-radius:10px;background:var(--accent-soft);color:var(--accent);
+  display:flex;align-items:center;justify-content:center;
+}
+.tip .ti svg{width:17px;height:17px}
+.tip b{display:block;margin-bottom:2px;font-size:14px}
+.tip span{color:var(--muted);font-size:13px;line-height:1.45}
+.hist-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #f0f1f5;font-size:13.5px}
+.hist-row span{color:var(--muted);flex:1}
+.tabs-group{margin-bottom:14px}
+.tabs-group h5{font-size:12px;font-weight:700;color:var(--muted);margin-bottom:6px}
+.tab-row{display:flex;align-items:center;gap:6px;padding:5px 0}
+.tab-row input[type=text]{
+  flex:1;height:31px;padding:0 9px;border:1px solid var(--border);border-radius:8px;outline:none;min-width:0;
+}
+.tab-row input[type=text]:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.tab-row .btn{height:31px;width:31px;padding:0;border:1px solid var(--border);border-radius:8px;flex:0 0 31px}
+.tab-row .btn svg{width:14px;height:14px}
+</style>
+</head>
+<body>
+
+<header id="topbar">
+  <div id="brand"><span class="logo">M</span><span class="brand-name">Microsite&nbsp;Editor</span></div>
+  <div id="fileMeta" hidden><span id="dirtyDot" data-clean></span><span id="fileNameLabel"></span></div>
+  <button class="btn" id="btnOpen" title="Open a microsite file"><span class="i" data-icon="open"></span>Open</button>
+  <span class="tb-sep"></span>
+  <button class="btn btn-icon" id="btnUndo" title="Undo (Ctrl+Z)" disabled><span class="i" data-icon="undo"></span></button>
+  <button class="btn btn-icon" id="btnRedo" title="Redo (Ctrl+Shift+Z)" disabled><span class="i" data-icon="redo"></span></button>
+  <span class="tb-sep"></span>
+  <button class="btn" id="btnFind" title="Find and replace (Ctrl+F)" disabled><span class="i" data-icon="search"></span>Find</button>
+  <button class="btn" id="btnTabs" title="Manage the tabs on this page" hidden><span class="i" data-icon="tabs"></span>Tabs</button>
+  <button class="btn" id="btnPage" title="Page title, description and icon" disabled><span class="i" data-icon="gear"></span>Page</button>
+  <span class="tb-spacer"></span>
+  <div class="seg" id="deviceToggle" hidden>
+    <button id="devDesktop" class="on" title="Desktop width"><span class="i" data-icon="desktop"></span></button>
+    <button id="devMobile" title="Phone width"><span class="i" data-icon="mobile"></span></button>
+  </div>
+  <div class="seg" id="modeToggle">
+    <button id="modeEdit" class="on"><span class="i" data-icon="pencil"></span>Edit</button>
+    <button id="modePreview"><span class="i" data-icon="eye"></span>Preview</button>
+  </div>
+  <button class="btn btn-icon" id="btnHelp" title="Keyboard shortcuts (?)"><span class="i" data-icon="help"></span></button>
+  <button class="btn btn-primary" id="btnSave" disabled><span class="i" data-icon="save"></span>Save</button>
+</header>
+
+<div id="findBar" hidden>
+  <input type="text" id="findInput" placeholder="Find text…">
+  <button class="btn btn-icon" id="findCase" title="Match capitalisation">Aa</button>
+  <span id="findCount">–</span>
+  <button class="btn btn-icon" id="findPrev" title="Previous match"><span class="i" data-icon="up"></span></button>
+  <button class="btn btn-icon" id="findNext" title="Next match"><span class="i" data-icon="down"></span></button>
+  <span class="tb-sep"></span>
+  <input type="text" id="replInput" placeholder="Replace with…">
+  <button class="btn" id="replOne">Replace</button>
+  <button class="btn" id="replAll">Replace all</button>
+  <span class="tb-spacer"></span>
+  <button class="btn btn-icon" id="findClose" title="Close (Esc)"><span class="i" data-icon="x"></span></button>
+</div>
+
+<main id="stage">
+  <div id="stageInner">
+    <div id="frameBox">
+      <iframe id="canvas" sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals" title="Your microsite"></iframe>
+      <div id="overlay"></div>
+    </div>
+  </div>
+  <aside id="sidePanel" hidden>
+    <div id="spHead">
+      <span id="spTitle">Selection</span>
+      <button class="btn btn-icon" id="spClose" title="Deselect (Esc)"><span class="i" data-icon="x"></span></button>
+    </div>
+    <div id="spBody"></div>
+  </aside>
+  <div id="dropzone">
+    <div id="dzCard">
+      <div class="dz-icon"><span class="i" data-icon="doc"></span></div>
+      <h1>Edit your microsite — no code needed</h1>
+      <p>Drop an HTML microsite here to open it.</p>
+      <div class="dz-steps">
+        <div class="dz-step"><span class="n">1</span><b>Open</b><span>Drop your .html file here, or browse for it.</span></div>
+        <div class="dz-step"><span class="n">2</span><b>Edit</b><span>Click any text or image on the page to change it.</span></div>
+        <div class="dz-step"><span class="n">3</span><b>Save</b><span>Download the updated file, ready to share.</span></div>
+      </div>
+      <button class="btn btn-primary" id="btnOpen2"><span class="i" data-icon="open"></span>Choose a file</button>
+      <div class="dz-or">…or drag &amp; drop it anywhere on this window</div>
+    </div>
+  </div>
+</main>
+
+<div id="textToolbar" hidden></div>
+<div id="linkPop" hidden></div>
+<div id="toasts"></div>
+<div id="modalRoot" hidden></div>
+<input type="file" id="filePicker" accept=".html,.htm" hidden>
+<input type="file" id="imgPicker" accept="image/*" hidden>
+
+<script>
+"use strict";
+/* ============================================================
+   Microsite Editor — a self-contained WYSIWYG editor for sales
+   microsites.
+
+   ARCHITECTURE OVERVIEW
+   - The loaded microsite renders in a same-origin iframe (#canvas,
+     via srcdoc) so its CSS/JS can't touch the editor chrome.
+   - The iframe's live DOM is the single source of truth. Export
+     clones <html>, strips the few editor artifacts, and serializes.
+   - Editor artifacts inside the iframe are kept to an absolute
+     minimum for round-trip cleanliness:
+       1. one <style id="msed-style"> element in <head>,
+       2. contenteditable + data-msed-ce on the element currently
+          being text-edited (removed when editing ends),
+       3. data-msed-hidden markers on elements the user chose to
+          hide (converted to display:none on export).
+     Everything else (hover/selection outlines, toolbars, drag
+     indicators, panels) lives in the PARENT document, positioned
+     over the iframe, so it can never leak into the saved file.
+   - Undo/redo is command-based (each edit records precise
+     do/undo closures over real node references) rather than
+     snapshot-based, so microsite script listeners (tabs,
+     accordions) survive undo.
+   - Dynamic content: microsite scripts run normally in Edit mode.
+     Edits always apply to the serialized DOM state — if a script
+     rebuilds content at load time, edits to that content may be
+     overwritten when the saved file next loads. We detect pages
+     whose rendered text is much larger than their static markup
+     and warn the user (see heavyScriptCheck).
+   ============================================================ */
+
+/* ---------------- tiny utils ---------------- */
+const $ = (s, r) => (r || document).querySelector(s);
+const $$ = (s, r) => Array.from((r || document).querySelectorAll(s));
+function h(tag, attrs, ...kids){
+  const e = document.createElement(tag);
+  if (attrs) for (const k in attrs){
+    if (k === 'style') e.style.cssText = attrs[k];
+    else if (k.startsWith('on')) e.addEventListener(k.slice(2), attrs[k]);
+    else if (k === 'html') e.innerHTML = attrs[k];
+    else if (attrs[k] !== null && attrs[k] !== undefined) e.setAttribute(k, attrs[k]);
+  }
+  for (const kid of kids){
+    if (kid === null || kid === undefined) continue;
+    e.appendChild(typeof kid === 'string' ? document.createTextNode(kid) : kid);
+  }
+  return e;
+}
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const debounce = (fn, ms) => { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; };
+function esc(s){ return String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function rgbToHex(rgb){
+  const m = String(rgb).match(/rgba?\(\s*(\d+)[,\s]+(\d+)[,\s]+(\d+)/);
+  if (!m) return /^#/.test(rgb) ? rgb : '#000000';
+  return '#' + [m[1], m[2], m[3]].map(n => (+n).toString(16).padStart(2, '0')).join('');
+}
+
+/* ---------------- icons (inline SVG, stroke style) ---------------- */
+const ICONS = {
+  open:'<path d="M3 7V5a2 2 0 0 1 2-2h4l2 2h6a2 2 0 0 1 2 2v2M3 7h16.2a1 1 0 0 1 .97 1.24l-1.9 8A2 2 0 0 1 16.3 18H5a2 2 0 0 1-2-1.9L3 7Z"/>',
+  save:'<path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"/><path d="M17 21v-8H7v8M7 3v5h8"/>',
+  undo:'<path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/>',
+  redo:'<path d="m15 14 5-5-5-5"/><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"/>',
+  search:'<circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/>',
+  gear:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1.03 1.56V21a2 2 0 1 1-4 0v-.09a1.7 1.7 0 0 0-1.11-1.56 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.7 1.7 0 0 0 .34-1.87 1.7 1.7 0 0 0-1.56-1.03H3a2 2 0 1 1 0-4h.09a1.7 1.7 0 0 0 1.56-1.11 1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.87.34h.01A1.7 1.7 0 0 0 10 3.09V3a2 2 0 1 1 4 0v.09a1.7 1.7 0 0 0 1.03 1.56 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.87v.01A1.7 1.7 0 0 0 20.91 10H21a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.51 1Z"/>',
+  pencil:'<path d="M17 3a2.8 2.8 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>',
+  eye:'<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>',
+  help:'<circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3"/><path d="M12 17h.01"/>',
+  tabs:'<path d="M3 8V6a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v2M3 8v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8M3 8h18M9 4v4M15 4v4"/>',
+  desktop:'<rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/>',
+  mobile:'<rect x="7" y="2" width="10" height="20" rx="2"/><path d="M11 18h2"/>',
+  x:'<path d="M18 6 6 18M6 6l12 12"/>',
+  up:'<path d="m18 15-6-6-6 6"/>',
+  down:'<path d="m6 9 6 6 6-6"/>',
+  copy:'<rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>',
+  trash:'<path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6M10 11v6M14 11v6"/>',
+  eyeoff:'<path d="M9.9 4.24A9.1 9.1 0 0 1 12 4c6.5 0 10 8 10 8a13.2 13.2 0 0 1-1.67 2.68M6.61 6.61A13.5 13.5 0 0 0 2 12s3.5 8 10 8a9.7 9.7 0 0 0 5.39-1.61M2 2l20 20"/><path d="M14.12 14.12a3 3 0 1 1-4.24-4.24"/>',
+  drag:'<circle cx="9" cy="5" r="1.3"/><circle cx="15" cy="5" r="1.3"/><circle cx="9" cy="12" r="1.3"/><circle cx="15" cy="12" r="1.3"/><circle cx="9" cy="19" r="1.3"/><circle cx="15" cy="19" r="1.3"/>',
+  parent:'<path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M8 21H5a2 2 0 0 1-2-2v-3M16 21h3a2 2 0 0 0 2-2v-3"/>',
+  doc:'<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6M9 13h6M9 17h4"/>',
+  bold:'<path d="M7 4h6a3.5 3.5 0 0 1 0 7H7ZM7 11h7.5a3.5 3.5 0 0 1 0 7H7V4"/>',
+  italic:'<path d="M19 4h-9M14 20H5M15 4 9 20"/>',
+  under:'<path d="M6 4v6a6 6 0 0 0 12 0V4M4 20h16"/>',
+  strike:'<path d="M16 4H9a3 3 0 0 0-2.8 4M14 12a4 4 0 0 1 0 8H6M4 12h16"/>',
+  alignL:'<path d="M3 6h18M3 12h12M3 18h15"/>',
+  alignC:'<path d="M3 6h18M6 12h12M5 18h14"/>',
+  alignR:'<path d="M3 6h18M9 12h12M6 18h15"/>',
+  ul:'<path d="M8 6h13M8 12h13M8 18h13"/><circle cx="4" cy="6" r="1.2"/><circle cx="4" cy="12" r="1.2"/><circle cx="4" cy="18" r="1.2"/>',
+  ol:'<path d="M10 6h11M10 12h11M10 18h11M4 6h1v4M4 10h2M6 18H4c0-1 2-1.5 2-3a1 1 0 0 0-2-.5"/>',
+  link:'<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>',
+  img:'<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/>',
+  btn:'<rect x="3" y="8" width="18" height="8" rx="4"/>',
+  minus:'<path d="M5 12h14"/>',
+  colsIcon:'<rect x="3" y="4" width="7.5" height="16" rx="1.5"/><rect x="13.5" y="4" width="7.5" height="16" rx="1.5"/>',
+  spacerIcon:'<path d="M12 5v14M8 8l4-4 4 4M8 16l4 4 4-4"/>',
+  para:'<path d="M13 4v16M17 4v16M19 4H9.5a4.5 4.5 0 0 0 0 9H13"/>',
+  head:'<path d="M6 4v16M18 4v16M6 12h12"/>',
+  plus:'<path d="M12 5v14M5 12h14"/>',
+  check:'<path d="M20 6 9 17l-5-5"/>',
+  go:'<path d="M5 12h14M13 6l6 6-6 6"/>',
+  aminus:'<path d="M4 20 11 4h1l7 16M6.5 15h10"/><path d="M20 7h-5" transform="translate(1,-2)"/>',
+};
+function icon(name, size){
+  return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"' +
+    (size ? ' style="width:' + size + 'px;height:' + size + 'px"' : '') + '>' + (ICONS[name] || '') + '</svg>';
+}
+// hydrate static placeholders
+$$('.i[data-icon]').forEach(sp => { sp.outerHTML = icon(sp.dataset.icon); });
+
+/* ---------------- app state ---------------- */
+const App = {
+  fileName: null,          // name of the loaded file
+  originalText: null,      // raw text as loaded (for doctype + heuristics)
+  doctype: '<!DOCTYPE html>',
+  iframe: $('#canvas'), idoc: null, iwin: null,
+  mode: 'edit',            // 'edit' | 'preview'
+  dirty: false,
+  selected: null,          // currently selected element (in iframe)
+  hovered: null,
+  editingEl: null,         // element in an active text-editing session
+  editingBefore: null,     // its innerHTML at session start
+  savedRange: null,        // last selection range inside the editing element
+  undoStack: [], redoStack: [],
+  tabGroups: [],           // detected tab patterns
+  saves: [],               // in-session version history {t, name, html}
+  richPasteUntil: 0,
+  device: 'desktop',
+  loading: false,
+};
+const MAX_UNDO = 200;
+
+/* ---------------- toasts ---------------- */
+function toast(msg, opts){
+  opts = opts || {};
+  const t = h('div', { class: 'toast' + (opts.kind ? ' ' + opts.kind : '') },
+    h('span', null, msg));
+  if (opts.action){
+    t.appendChild(h('button', { class: 't-act', onclick: () => { dismiss(); opts.action.fn(); } }, opts.action.label));
+  }
+  t.appendChild(h('button', { class: 't-x', html: '&#10005;', onclick: () => dismiss() }));
+  function dismiss(){ if (t.parentNode) t.remove(); }
+  $('#toasts').appendChild(t);
+  const life = opts.duration || (opts.action ? 9000 : 3500);
+  if (life > 0) setTimeout(dismiss, life);
+  return dismiss;
+}
+const _oneToasts = new Set();
+function toastOnce(key, msg, opts){
+  if (_oneToasts.has(key)) return;
+  _oneToasts.add(key);
+  toast(msg, opts);
+}
+
+/* ---------------- modals ---------------- */
+function showModal(opts){
+  const root = $('#modalRoot');
+  root.hidden = false;
+  root.innerHTML = '';
+  const close = () => { root.hidden = true; root.innerHTML = ''; if (opts.onclose) opts.onclose(); };
+  const head = h('div', { class: 'modal-h' }, opts.title,
+    h('button', { class: 'btn btn-icon', html: icon('x'), onclick: close }));
+  const body = h('div', { class: 'modal-b' });
+  if (typeof opts.body === 'string') body.innerHTML = opts.body; else if (opts.body) body.appendChild(opts.body);
+  const foot = h('div', { class: 'modal-f' });
+  (opts.buttons || []).forEach(b => {
+    foot.appendChild(h('button', {
+      class: 'btn' + (b.primary ? ' btn-primary' : ''),
+      onclick: () => { const keep = b.fn && b.fn(); if (!keep) close(); }
+    }, b.label));
+  });
+  const modal = h('div', { class: 'modal' + (opts.wide ? ' wide' : '') }, head, body);
+  if (opts.buttons && opts.buttons.length) modal.appendChild(foot);
+  root.appendChild(h('div', { class: 'backdrop', onclick: opts.blocking ? null : close }));
+  root.appendChild(modal);
+  return close;
+}
+function confirmModal(title, msg, okLabel, fn){
+  showModal({ title, body: '<p style="color:var(--muted)">' + esc(msg) + '</p>',
+    buttons: [ { label: 'Cancel' }, { label: okLabel, primary: true, fn } ] });
+}
+
+/* ---------------- file open ---------------- */
+function pickFile(){ $('#filePicker').value = ''; $('#filePicker').click(); }
+$('#btnOpen').addEventListener('click', () => guardOpen(pickFile));
+$('#btnOpen2').addEventListener('click', pickFile);
+$('#filePicker').addEventListener('change', e => {
+  const f = e.target.files[0];
+  if (f) readMicrositeFile(f);
+});
+function guardOpen(fn){
+  if (App.dirty){
+    confirmModal('Open a different file?',
+      'You have unsaved changes. If you open another file now, those changes will be lost.',
+      'Open anyway', fn);
+  } else fn();
+}
+function readMicrositeFile(file){
+  if (!/\.html?$/i.test(file.name)){
+    toast('That doesn’t look like an HTML file. Please choose a .html file.', { kind: 'warn' });
+    return;
+  }
+  const rd = new FileReader();
+  rd.onload = () => loadHTML(String(rd.result), file.name);
+  rd.onerror = () => toast('Sorry — that file couldn’t be read.', { kind: 'error' });
+  rd.readAsText(file);
+}
+// window-wide drag & drop
+['dragover', 'dragenter'].forEach(ev => window.addEventListener(ev, e => {
+  if (e.dataTransfer && Array.from(e.dataTransfer.types).includes('Files')){
+    e.preventDefault();
+    $('#dropzone').classList.add('over');
+  }
+}));
+['dragleave', 'drop'].forEach(ev => window.addEventListener(ev, e => {
+  if (ev === 'dragleave' && e.relatedTarget) return;
+  $('#dropzone').classList.remove('over');
+  if (ev === 'drop'){
+    e.preventDefault();
+    const f = e.dataTransfer.files && e.dataTransfer.files[0];
+    if (f) guardOpen(() => readMicrositeFile(f));
+  }
+}));
+
+/* ---------------- load / render ---------------- */
+function loadHTML(text, name){
+  App.loading = true;
+  App.fileName = name || 'microsite.html';
+  App.originalText = text;
+  const dt = text.match(/^\s*<!doctype[^>]*>/i);
+  App.doctype = dt ? dt[0].trim() : '<!DOCTYPE html>';
+  // reset state
+  deselect(); endTextEdit(false);
+  App.undoStack = []; App.redoStack = []; App.tabGroups = [];
+  App.dirty = false;
+  const frame = App.iframe;
+  // Attach the editing runtime as soon as the new document's DOM is
+  // ready rather than waiting for the iframe 'load' event — a slow or
+  // unreachable CDN asset (fonts, framework CSS) must not block
+  // editing. The old document is flagged so the poll can't attach to
+  // it while the new one is still being created.
+  try { if (frame.contentDocument) frame.contentDocument._msedOld = true; } catch(_e){}
+  App._loadGen = (App._loadGen || 0) + 1;
+  const gen = App._loadGen;
+  const tryAttach = () => {
+    if (gen !== App._loadGen){ clearInterval(poll); return; }
+    let doc = null;
+    try { doc = frame.contentDocument; } catch(_e){}
+    if (!doc || doc._msedOld || doc.readyState === 'loading' || !doc.body) return;
+    clearInterval(poll);
+    if (doc._msedAttached) return;
+    doc._msedAttached = true;
+    onFrameLoad();
+  };
+  const poll = setInterval(tryAttach, 60);
+  frame.addEventListener('load', tryAttach, { once: true });
+  frame.srcdoc = text;
+  $('#dropzone').hidden = true;
+  $('#fileMeta').hidden = false;
+  $('#fileNameLabel').textContent = App.fileName;
+  ['#btnSave', '#btnFind', '#btnPage'].forEach(s => $(s).disabled = false);
+  refreshUndoButtons();
+  markClean();
+}
+function onFrameLoad(){
+  App.idoc = App.iframe.contentDocument;
+  App.iwin = App.iframe.contentWindow;
+  App.loading = false;
+  injectRuntimeStyle();
+  attachFrameListeners();
+  setMode(App.mode, true);
+  // give the microsite's own scripts a moment to settle
+  setTimeout(() => { detectTabs(); heavyScriptCheck(); }, 400);
+  checkDraft();
+  showFirstRunTips();
+}
+
+/* The one element we inject into the microsite (stripped on export). */
+function injectRuntimeStyle(){
+  const doc = App.idoc;
+  const old = doc.getElementById('msed-style');
+  if (old) old.remove();
+  const st = doc.createElement('style');
+  st.id = 'msed-style';
+  st.textContent = runtimeCSS();
+  (doc.head || doc.documentElement).appendChild(st);
+}
+function runtimeCSS(){
+  if (App.mode === 'preview'){
+    return '[data-msed-hidden]{display:none !important;}';
+  }
+  return [
+    // hidden elements stay visible-but-ghosted in Edit mode so they can be re-shown
+    '[data-msed-hidden]{opacity:.35 !important;outline:2px dashed #9ca3af !important;outline-offset:-2px;}',
+    '[data-msed-ce]{outline:none !important;cursor:text;caret-color:#4f46e5;min-height:1em;}',
+    'html{scroll-behavior:auto !important;}'
+  ].join('\n');
+}
+
+/* ---------------- export / save ---------------- */
+/* Round-trip cleanliness: the exported document must differ from the
+   loaded one ONLY by the user's intentional edits. We remove:
+   - the injected #msed-style element
+   - contenteditable/spellcheck added by us (marked data-msed-ce)
+   - every data-msed-* attribute (data-msed-hidden becomes a real
+     display:none, since hiding IS an intentional edit).
+   Nothing else is ever added to the iframe DOM by the editor. */
+function buildExportHTML(endSession){
+  if (endSession !== false) endTextEdit(true);
+  const doc = App.idoc;
+  if (!doc || !doc.documentElement) return null;
+  const clone = doc.documentElement.cloneNode(true);
+  const style = clone.querySelector('#msed-style');
+  if (style) style.remove();
+  clone.querySelectorAll('[data-msed-ce]').forEach(n => {
+    n.removeAttribute('contenteditable');
+    n.removeAttribute('spellcheck');
+  });
+  clone.querySelectorAll('[data-msed-hidden]').forEach(n => { n.style.display = 'none'; });
+  const all = [clone].concat(Array.from(clone.getElementsByTagName('*')));
+  for (const n of all){
+    for (const at of Array.from(n.attributes || [])){
+      if (at.name.startsWith('data-msed-')) n.removeAttribute(at.name);
+    }
+  }
+  return App.doctype + '\n' + clone.outerHTML;
+}
+function suggestFileName(name){
+  const m = String(name || 'microsite.html').match(/^(.*?)(?:-v(\d+))?(\.html?)?$/i);
+  const base = m[1] || 'microsite';
+  const n = m[2] ? (+m[2] + 1) : 2;
+  return base + '-v' + n + (m[3] || '.html');
+}
+function saveFile(){
+  if (!App.idoc) return;
+  const html = buildExportHTML(true);
+  if (html === null){ toast('Nothing to save yet.', { kind: 'warn' }); return; }
+  const outName = suggestFileName(App.fileName);
+  const blob = new Blob([html], { type: 'text/html' });
+  const url = URL.createObjectURL(blob);
+  const a = h('a', { href: url, download: outName });
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
+  App.saves.push({ t: Date.now(), name: outName, html });
+  if (App.saves.length > 20) App.saves.shift();
+  clearDraft();
+  markClean();
+  toast('Saved as “' + outName + '” — check your downloads.');
+}
+$('#btnSave').addEventListener('click', saveFile);
+
+function markDirty(){
+  App.dirty = true;
+  $('#dirtyDot').removeAttribute('data-clean');
+  $('#dirtyDot').title = 'Unsaved changes';
+}
+function markClean(){
+  App.dirty = false;
+  $('#dirtyDot').setAttribute('data-clean', '');
+  $('#dirtyDot').title = 'All changes saved';
+}
+window.addEventListener('beforeunload', e => {
+  if (App.dirty){ e.preventDefault(); e.returnValue = ''; }
+});
+
+/* ---------------- friendly names ---------------- */
+const NAME_MAP = {
+  H1: 'Heading', H2: 'Heading', H3: 'Heading', H4: 'Heading', H5: 'Heading', H6: 'Heading',
+  P: 'Paragraph', IMG: 'Image', A: 'Link', BUTTON: 'Button', LI: 'List item',
+  UL: 'List', OL: 'Numbered list', TABLE: 'Table', TD: 'Table cell', TH: 'Table cell',
+  TR: 'Table row', BLOCKQUOTE: 'Quote', FIGURE: 'Image block', FIGCAPTION: 'Caption',
+  SECTION: 'Section', HEADER: 'Header', FOOTER: 'Footer', NAV: 'Menu', ASIDE: 'Side panel',
+  ARTICLE: 'Section', MAIN: 'Main content', FORM: 'Form', INPUT: 'Form field',
+  TEXTAREA: 'Form field', SELECT: 'Dropdown', LABEL: 'Label', HR: 'Divider',
+  VIDEO: 'Video', AUDIO: 'Audio', IFRAME: 'Embedded content', SVG: 'Graphic',
+  PRE: 'Code block', CODE: 'Code', SPAN: 'Text', DT: 'Term', DD: 'Description',
+  CANVAS: 'Graphic', PICTURE: 'Image',
+};
+function friendlyName(el){
+  if (!el || !el.tagName) return 'Element';
+  const tag = el.tagName.toUpperCase();
+  if (tag === 'DIV' || tag === 'SECTION' || tag === 'ARTICLE'){
+    if (el.parentElement === App.idoc.body) return 'Section';
+    if (tag !== 'DIV') return NAME_MAP[tag];
+    const cs = App.iwin.getComputedStyle(el);
+    if (cs.backgroundImage !== 'none') return 'Image section';
+    const kids = el.children.length;
+    if (!kids && !el.textContent.trim()) return 'Spacer';
+    if (kids > 2) return 'Group';
+    return 'Block';
+  }
+  if (tag === 'A' && el.querySelector('img') && !el.textContent.trim()) return 'Linked image';
+  if (tag === 'A'){
+    const cs = App.iwin.getComputedStyle(el);
+    if (cs.display !== 'inline' && (cs.backgroundColor !== 'rgba(0, 0, 0, 0)' || cs.borderStyle !== 'none')) return 'Button';
+  }
+  return NAME_MAP[tag] || 'Element';
+}
+
+/* ---------------- selection resolution ---------------- */
+const SKIP_TAGS = new Set(['HTML', 'BODY', 'SCRIPT', 'STYLE', 'LINK', 'META', 'TITLE', 'BR', 'TEMPLATE', 'NOSCRIPT', 'WBR', 'SOURCE', 'TRACK', 'COL', 'COLGROUP']);
+const INLINE_TAGS = new Set(['SPAN', 'STRONG', 'EM', 'B', 'I', 'U', 'S', 'SMALL', 'SUB', 'SUP', 'MARK', 'CODE', 'ABBR', 'TIME', 'FONT', 'CITE', 'Q', 'KBD']);
+const TEXT_TAGS = new Set(['P', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'LI', 'TD', 'TH', 'BLOCKQUOTE', 'FIGCAPTION', 'PRE', 'DT', 'DD', 'LABEL', 'CAPTION']);
+
+function resolveSelectable(target){
+  let el = target;
+  const body = App.idoc.body;
+  // climb out of SVG internals
+  if (el && el.ownerSVGElement) el = el.ownerSVGElement;
+  while (el && el !== body && el !== App.idoc.documentElement){
+    const tag = el.tagName ? el.tagName.toUpperCase() : '';
+    if (el.nodeType !== 1 || SKIP_TAGS.has(tag)){ el = el.parentElement; continue; }
+    // climb out of pure inline formatting into the block that holds it,
+    // unless the inline element is acting standalone (direct child of a container)
+    if (INLINE_TAGS.has(tag) && el.parentElement && el.parentElement !== body){
+      const ptag = el.parentElement.tagName.toUpperCase();
+      if (TEXT_TAGS.has(ptag) || ptag === 'A' || ptag === 'BUTTON' || INLINE_TAGS.has(ptag)){
+        el = el.parentElement; continue;
+      }
+    }
+    return el;
+  }
+  return null;
+}
+function isTextual(el){
+  const tag = el.tagName.toUpperCase();
+  if (TEXT_TAGS.has(tag) || INLINE_TAGS.has(tag)) return true;
+  // a div that directly holds text (no block children) is editable too
+  if ((tag === 'DIV' || tag === 'A' || tag === 'BUTTON') && el.textContent.trim()){
+    for (const kid of el.children){
+      const kt = kid.tagName.toUpperCase();
+      if (!INLINE_TAGS.has(kt) && kt !== 'A' && kt !== 'BR' && kt !== 'IMG') return false;
+    }
+    return true;
+  }
+  return false;
+}
+function interactiveAncestor(el){
+  let n = el;
+  const body = App.idoc.body;
+  while (n && n !== body){
+    if (n.nodeType === 1){
+      const tag = n.tagName.toUpperCase();
+      if (tag === 'A' && n.hasAttribute('href')) return n;
+      if (tag === 'BUTTON' || tag === 'SUMMARY' || tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return n;
+      const role = (n.getAttribute('role') || '').toLowerCase();
+      if (role === 'button' || role === 'tab' || role === 'link') return n;
+      if (n.hasAttribute('onclick') || n.hasAttribute('data-tab') || n.hasAttribute('data-target') || n.hasAttribute('data-toggle')) return n;
+    }
+    n = n.parentElement;
+  }
+  return null;
+}
+function isExternalLink(a){
+  const href = a.getAttribute('href') || '';
+  return href && !href.startsWith('#');
+}
+
+/* ---------------- undo / redo (command based) ----------------
+   Every edit is a command object {label, redo(), undo()} over real
+   node references. Commands are recorded AFTER being applied (or
+   applied via perform()). Node references survive removal, so
+   undoing a delete re-inserts the very same node — including any
+   event listeners the microsite's scripts attached to it. */
+function record(cmd){
+  App.undoStack.push(cmd);
+  if (App.undoStack.length > MAX_UNDO) App.undoStack.shift();
+  App.redoStack = [];
+  markDirty();
+  refreshUndoButtons();
+}
+function perform(cmd){ cmd.redo(); record(cmd); }
+function undo(){
+  const cmd = App.undoStack.pop();
+  if (!cmd) return;
+  endTextEdit(true);
+  cmd.undo();
+  App.redoStack.push(cmd);
+  markDirty();
+  afterHistoryChange(cmd, 'Undid');
+}
+function redo(){
+  const cmd = App.redoStack.pop();
+  if (!cmd) return;
+  endTextEdit(true);
+  cmd.redo();
+  App.undoStack.push(cmd);
+  markDirty();
+  afterHistoryChange(cmd, 'Redid');
+}
+function afterHistoryChange(cmd, verb){
+  refreshUndoButtons();
+  if (App.selected && !App.selected.isConnected) deselect();
+  renderPanel();
+  if (cmd.label) toast(verb + ': ' + cmd.label, { duration: 1600 });
+}
+function refreshUndoButtons(){
+  $('#btnUndo').disabled = !App.undoStack.length;
+  $('#btnRedo').disabled = !App.redoStack.length;
+}
+$('#btnUndo').addEventListener('click', undo);
+$('#btnRedo').addEventListener('click', redo);
+/* command factories */
+function htmlCommand(el, before, after, label){
+  return { label, redo(){ el.innerHTML = after; }, undo(){ el.innerHTML = before; } };
+}
+function styleCommand(el, mutate, label){
+  const before = el.getAttribute('style');
+  mutate(el);
+  const after = el.getAttribute('style');
+  const apply = v => { if (v === null) el.removeAttribute('style'); else el.setAttribute('style', v); };
+  record({ label, redo(){ apply(after); }, undo(){ apply(before); } });
+}
+function attrCommand(el, name, value, label){
+  const before = el.getAttribute(name);
+  const apply = v => { if (v === null) el.removeAttribute(name); else el.setAttribute(name, v); };
+  perform({ label, redo(){ apply(value); }, undo(){ apply(before); } });
+}
+function moveCommand(el, toParent, toNext, label){
+  const fromParent = el.parentNode, fromNext = el.nextSibling;
+  perform({ label,
+    redo(){ toParent.insertBefore(el, toNext && toNext.parentNode === toParent ? toNext : (toNext || null)); },
+    undo(){ fromParent.insertBefore(el, fromNext && fromNext.parentNode === fromParent ? fromNext : null); } });
+}
+function insertCommand(el, parent, next, label){
+  perform({ label, redo(){ parent.insertBefore(el, next || null); }, undo(){ el.remove(); } });
+}
+function removeCommand(el, label){
+  const parent = el.parentNode, next = el.nextSibling;
+  perform({ label, redo(){ el.remove(); }, undo(){ parent.insertBefore(el, next && next.parentNode === parent ? next : null); } });
+}
+function compositeCommand(cmds, label){
+  return { label,
+    redo(){ cmds.forEach(c => c.redo()); },
+    undo(){ for (let i = cmds.length - 1; i >= 0; i--) cmds[i].undo(); } };
+}
+function textNodeCommand(node, after, label){
+  const before = node.nodeValue;
+  return { label, redo(){ node.nodeValue = after; }, undo(){ node.nodeValue = before; } };
+}
+
+/* ---------------- overlay chrome ---------------- */
+const overlay = $('#overlay');
+const hoverBox = h('div', { class: 'ov-box', id: 'hoverBox', hidden: '' });
+const hoverLabel = h('div', { id: 'hoverLabel', hidden: '' });
+const selBox = h('div', { class: 'ov-box', id: 'selBox', hidden: '' });
+const findHl = h('div', { class: 'ov-box', id: 'findHl', hidden: '' });
+const dropLine = h('div', { id: 'dropLine', hidden: '' });
+const elToolbar = h('div', { id: 'elToolbar', hidden: '' });
+const editThisBtn = h('button', { id: 'editThisBtn', hidden: '', html: icon('pencil') + '<span>Edit text</span>' });
+overlay.append(hoverBox, hoverLabel, selBox, findHl, dropLine, elToolbar, editThisBtn);
+const rzHandles = ['nw', 'ne', 'sw', 'se'].map(pos => {
+  const d = h('div', { class: 'rz ' + pos, hidden: '' });
+  overlay.appendChild(d);
+  return d;
+});
+editThisBtn.addEventListener('mousedown', e => e.preventDefault());
+editThisBtn.addEventListener('click', () => {
+  if (App.selected) beginTextEdit(App.selected);
+});
+
+function frameRectOf(el){
+  // element rect in iframe-viewport coords == overlay coords
+  return el.getBoundingClientRect();
+}
+function placeBox(box, r, pad){
+  pad = pad || 0;
+  box.style.left = (r.left - pad) + 'px';
+  box.style.top = (r.top - pad) + 'px';
+  box.style.width = (r.width + pad * 2) + 'px';
+  box.style.height = (r.height + pad * 2) + 'px';
+}
+
+/* continuous position sync — cheap (max ~4 rect reads/frame) and
+   keeps outlines glued to content through scrolling, animations and
+   microsite script re-layout */
+(function tick(){
+  requestAnimationFrame(tick);
+  if (!App.idoc || App.mode !== 'edit') return;
+  if (App.hovered && (!App.hovered.isConnected || App.hovered === App.selected)) setHover(null);
+  if (App.hovered){
+    const r = frameRectOf(App.hovered);
+    placeBox(hoverBox, r); hoverBox.hidden = false;
+    hoverLabel.hidden = false;
+    hoverLabel.textContent = friendlyName(App.hovered);
+    hoverLabel.style.left = r.left + 'px';
+    hoverLabel.style.top = Math.max(2, r.top - 20) + 'px';
+  } else { hoverBox.hidden = true; hoverLabel.hidden = true; }
+  if (App.selected && !App.selected.isConnected) deselect();
+  if (App.selected){
+    const r = frameRectOf(App.selected);
+    placeBox(selBox, r, 1); selBox.hidden = false;
+    selBox.classList.toggle('editing', App.editingEl === App.selected);
+    positionElToolbar(r);
+    positionEditThis(r);
+    positionRzHandles(r);
+  } else {
+    selBox.hidden = true; elToolbar.hidden = true; editThisBtn.hidden = true;
+    rzHandles.forEach(x => x.hidden = true);
+  }
+  positionTextToolbar();
+})();
+function positionElToolbar(r){
+  if (App.editingEl === App.selected){ elToolbar.hidden = true; return; }
+  elToolbar.hidden = false;
+  const tw = elToolbar.offsetWidth, th = elToolbar.offsetHeight;
+  const ovW = overlay.clientWidth;
+  let top = r.top - th - 7;
+  if (top < 4) top = Math.min(r.bottom + 7, overlay.clientHeight - th - 4);
+  elToolbar.style.top = top + 'px';
+  elToolbar.style.left = clamp(r.left, 4, Math.max(4, ovW - tw - 4)) + 'px';
+}
+function positionEditThis(r){
+  const show = App.selectedInteractive && isTextual(App.selected) && App.editingEl !== App.selected;
+  editThisBtn.hidden = !show;
+  if (!show) return;
+  editThisBtn.style.left = clamp(r.right - editThisBtn.offsetWidth, 4, overlay.clientWidth - editThisBtn.offsetWidth - 4) + 'px';
+  editThisBtn.style.top = Math.min(r.bottom + 7, overlay.clientHeight - 34) + 'px';
+}
+function positionRzHandles(r){
+  const isImg = App.selected && App.selected.tagName === 'IMG' && App.editingEl !== App.selected;
+  rzHandles.forEach((hd, i) => {
+    hd.hidden = !isImg;
+    if (!isImg) return;
+    const x = (i === 0 || i === 2) ? r.left : r.right;
+    const y = (i < 2) ? r.top : r.bottom;
+    hd.style.left = (x - 6) + 'px';
+    hd.style.top = (y - 6) + 'px';
+  });
+}
+
+/* ---------------- hover & click handling in the iframe ---------------- */
+function setHover(el){ App.hovered = el; }
+function attachFrameListeners(){
+  const doc = App.idoc;
+  doc.addEventListener('mousemove', e => {
+    if (App.mode !== 'edit' || App.dragState) return;
+    const el = resolveSelectable(e.target);
+    setHover(el && el !== App.selected && el !== App.editingEl ? el : null);
+  }, true);
+  doc.addEventListener('mouseleave', () => setHover(null), true);
+  doc.addEventListener('click', onFrameClick, true);
+  doc.addEventListener('dblclick', e => {
+    if (App.mode !== 'edit') return;
+    const el = resolveSelectable(e.target);
+    if (el && isTextual(el) && App.editingEl !== el){
+      e.preventDefault(); e.stopPropagation();
+      selectEl(el);
+      beginTextEdit(el, e.clientX, e.clientY);
+    }
+  }, true);
+  doc.addEventListener('keydown', onFrameKeydown, true);
+  doc.addEventListener('selectionchange', () => {
+    if (!App.editingEl) return;
+    const sel = App.iwin.getSelection();
+    if (sel.rangeCount && App.editingEl.contains(sel.anchorNode)){
+      App.savedRange = sel.getRangeAt(0).cloneRange();
+      refreshTextToolbarState();
+    }
+  });
+  doc.addEventListener('paste', e => {
+    if (!App.editingEl || App.mode !== 'edit') return;
+    if (Date.now() < App.richPasteUntil) return; // user asked for formatted paste
+    e.preventDefault();
+    const text = (e.clipboardData || App.iwin.clipboardData).getData('text/plain');
+    App.idoc.execCommand('insertText', false, text);
+  }, true);
+  doc.addEventListener('input', () => { if (App.editingEl) markDirty(); });
+}
+function onFrameClick(e){
+  if (App.mode === 'preview'){
+    // keep the customer experience, but never let the page navigate the canvas away
+    const a = e.target.closest && e.target.closest('a[href]');
+    if (a && isExternalLink(a)){
+      e.preventDefault();
+      window.open(a.href, '_blank', 'noopener');
+    }
+    return;
+  }
+  const target = e.target;
+  const el = resolveSelectable(target);
+  if (!el){ if (!App.editingEl) deselect(); return; }
+  // clicks inside the element being edited: let the caret move naturally
+  if (App.editingEl && (el === App.editingEl || App.editingEl.contains(target))){
+    if (interactiveAncestor(target)) e.preventDefault(); // don't fire links/tabs mid-edit
+    return;
+  }
+  if (App.editingEl) endTextEdit(true);
+  const inter = interactiveAncestor(target);
+  if (inter){
+    // Interactive element (link, button, tab): single click keeps its
+    // normal behaviour so tab navigation etc. still works; the user
+    // edits it via the "Edit text" affordance or double-click.
+    const a = target.closest && target.closest('a[href]');
+    if (a && isExternalLink(a)){
+      e.preventDefault();
+      toastOnce('extlink', 'Links don’t open while editing — switch to Preview to try them.');
+    }
+    const sel = resolveSelectable(inter) || el;
+    selectEl(sel, true);
+    setTimeout(() => detectTabsRefresh(), 50);
+    return;
+  }
+  e.preventDefault();
+  e.stopPropagation();
+  selectEl(el, false);
+  if (isTextual(el)) beginTextEdit(el, e.clientX, e.clientY);
+}
+function onFrameKeydown(e){
+  handleShortcut(e, true);
+}
+
+/* ---------------- selection ---------------- */
+function selectEl(el, interactive){
+  App.selected = el;
+  App.selectedInteractive = !!interactive || !!interactiveAncestor(el);
+  setHover(null);
+  buildElToolbar();
+  renderPanel();
+}
+function deselect(){
+  App.selected = null;
+  App.selectedInteractive = false;
+  if (App.editingEl) endTextEdit(true);
+  hideTextToolbar(); hideLinkPop();
+  $('#sidePanel').hidden = true;
+}
+$('#spClose').addEventListener('click', deselect);
+
+function buildElToolbar(){
+  const el = App.selected;
+  if (!el) return;
+  elToolbar.innerHTML = '';
+  const mk = (ic, title, fn, cls) => {
+    const b = h('button', { title, html: icon(ic), class: cls || null });
+    b.addEventListener('mousedown', ev => ev.preventDefault());
+    b.addEventListener('click', fn);
+    elToolbar.appendChild(b);
+    return b;
+  };
+  elToolbar.appendChild(h('span', { class: 'et-label' }, friendlyName(el)));
+  const dragBtn = mk('drag', 'Drag to move', () => {});
+  dragBtn.id = 'etDrag';
+  dragBtn.addEventListener('mousedown', startDragFromHandle);
+  elToolbar.appendChild(h('span', { class: 'et-sep' }));
+  const prev = prevSiblingEl(el), next = nextSiblingEl(el);
+  const bUp = mk('up', 'Move up', () => moveSelected(-1));
+  const bDn = mk('down', 'Move down', () => moveSelected(1));
+  if (!prev) bUp.disabled = true, bUp.style.opacity = .3;
+  if (!next) bDn.disabled = true, bDn.style.opacity = .3;
+  mk('parent', 'Select the whole section around this', selectParent);
+  elToolbar.appendChild(h('span', { class: 'et-sep' }));
+  mk('copy', 'Duplicate', duplicateSelected);
+  mk(el.hasAttribute('data-msed-hidden') ? 'eye' : 'eyeoff',
+     el.hasAttribute('data-msed-hidden') ? 'Show again' : 'Hide (kept in the file, invisible to viewers)',
+     toggleHideSelected);
+  mk('trash', 'Delete (you can undo)', deleteSelected, 'danger');
+}
+function prevSiblingEl(el){ let n = el.previousElementSibling; return n; }
+function nextSiblingEl(el){ let n = el.nextElementSibling; return n; }
+function selectParent(){
+  const el = App.selected;
+  if (!el) return;
+  const p = el.parentElement;
+  if (p && p !== App.idoc.body && p !== App.idoc.documentElement) selectEl(p);
+  else toast('This is already a top-level section.', { duration: 1800 });
+}
+
+/* ---------------- structure operations ---------------- */
+function moveSelected(dir){
+  const el = App.selected;
+  if (!el) return;
+  const sib = dir < 0 ? prevSiblingEl(el) : nextSiblingEl(el);
+  if (!sib) return;
+  moveCommand(el, el.parentNode, dir < 0 ? sib : sib.nextSibling, 'Move ' + friendlyName(el).toLowerCase() + (dir < 0 ? ' up' : ' down'));
+  buildElToolbar(); renderPanel();
+  el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+}
+function duplicateSelected(){
+  const el = App.selected;
+  if (!el) return;
+  const clone = el.cloneNode(true);
+  // avoid duplicate ids breaking tab scripts / anchors
+  if (clone.id) clone.removeAttribute('id');
+  clone.querySelectorAll('[id]').forEach(n => n.removeAttribute('id'));
+  insertCommand(clone, el.parentNode, el.nextSibling, 'Duplicate ' + friendlyName(el).toLowerCase());
+  selectEl(clone);
+  toast('Duplicated. The copy is right below the original.', { duration: 2200 });
+}
+function toggleHideSelected(){
+  const el = App.selected;
+  if (!el) return;
+  const hidden = el.hasAttribute('data-msed-hidden');
+  perform({
+    label: (hidden ? 'Show ' : 'Hide ') + friendlyName(el).toLowerCase(),
+    redo(){ hidden ? el.removeAttribute('data-msed-hidden') : el.setAttribute('data-msed-hidden', ''); },
+    undo(){ hidden ? el.setAttribute('data-msed-hidden', '') : el.removeAttribute('data-msed-hidden'); }
+  });
+  buildElToolbar(); renderPanel();
+  if (!hidden) toast('Hidden. It stays in the file but viewers won’t see it.', { duration: 2600 });
+}
+function deleteSelected(){
+  const el = App.selected;
+  if (!el) return;
+  const name = friendlyName(el).toLowerCase();
+  deselect();
+  removeCommand(el, 'Delete ' + name);
+  toast('Deleted the ' + name + '.', { action: { label: 'Undo', fn: undo }, duration: 6000 });
+}
+
+/* ---------------- drag & drop reordering ----------------
+   Reordering is restricted to siblings under the same parent —
+   this covers reordering sections and reordering items inside a
+   section, and structurally can't corrupt an unfamiliar layout. */
+function startDragFromHandle(e){
+  e.preventDefault();
+  const el = App.selected;
+  if (!el || App.mode !== 'edit') return;
+  const parent = el.parentElement;
+  if (!parent) return;
+  const sibs = Array.from(parent.children).filter(c => c !== el && !SKIP_TAGS.has(c.tagName));
+  if (!sibs.length){ toast('There’s nothing to reorder here — this is the only item in its group.', { duration: 2600 }); return; }
+  const shield = h('div', { id: 'dragShield' });
+  const ghost = h('div', { id: 'dragGhost' }, 'Moving: ' + friendlyName(el));
+  overlay.append(shield, ghost);
+  const frameRect = () => $('#frameBox').getBoundingClientRect();
+  // orientation: are siblings stacked vertically or laid out in a row?
+  let horizontal = false;
+  if (parent.children.length > 1){
+    const a = parent.children[0].getBoundingClientRect();
+    const b = parent.children[parent.children.length - 1].getBoundingClientRect();
+    horizontal = Math.abs(b.left - a.left) > Math.abs(b.top - a.top);
+  }
+  let target = null; // {next: nodeOrNull}
+  App.dragState = true;
+  setHover(null);
+  function toFrameCoords(ev){
+    const fr = frameRect();
+    return { x: ev.clientX - fr.left, y: ev.clientY - fr.top };
+  }
+  function onMove(ev){
+    const p = toFrameCoords(ev);
+    ghost.style.left = (p.x + 14) + 'px';
+    ghost.style.top = (p.y + 10) + 'px';
+    // auto-scroll near edges
+    const H = overlay.clientHeight;
+    if (p.y < 56) App.iwin.scrollBy(0, -14);
+    else if (p.y > H - 56) App.iwin.scrollBy(0, 14);
+    // find insertion point among siblings
+    const kids = Array.from(parent.children).filter(c => c !== el && !SKIP_TAGS.has(c.tagName));
+    let best = null, bestNext = null;
+    for (const kid of kids){
+      const r = kid.getBoundingClientRect();
+      const mid = horizontal ? r.left + r.width / 2 : r.top + r.height / 2;
+      const v = horizontal ? p.x : p.y;
+      if (v < mid){ best = r; bestNext = kid; break; }
+      best = r; bestNext = kid.nextSibling === el ? el.nextSibling : kid.nextSibling;
+    }
+    target = { next: bestNext };
+    // draw indicator
+    dropLine.hidden = false;
+    dropLine.classList.toggle('h', horizontal);
+    if (bestNext && bestNext.nodeType === 1 && bestNext !== el){
+      const r = bestNext.getBoundingClientRect();
+      if (horizontal){ dropLine.style.left = (r.left - 2) + 'px'; dropLine.style.top = r.top + 'px'; dropLine.style.width = '3px'; dropLine.style.height = r.height + 'px'; }
+      else { dropLine.style.left = r.left + 'px'; dropLine.style.top = (r.top - 2) + 'px'; dropLine.style.width = r.width + 'px'; dropLine.style.height = '3px'; }
+    } else {
+      const last = kids[kids.length - 1];
+      const r = last.getBoundingClientRect();
+      if (horizontal){ dropLine.style.left = (r.right - 1) + 'px'; dropLine.style.top = r.top + 'px'; dropLine.style.width = '3px'; dropLine.style.height = r.height + 'px'; }
+      else { dropLine.style.left = r.left + 'px'; dropLine.style.top = (r.bottom - 1) + 'px'; dropLine.style.width = r.width + 'px'; dropLine.style.height = '3px'; }
+    }
+  }
+  function finish(apply){
+    App.dragState = false;
+    shield.remove(); ghost.remove(); dropLine.hidden = true;
+    window.removeEventListener('mousemove', onMove);
+    window.removeEventListener('mouseup', onUp);
+    window.removeEventListener('keydown', onKey, true);
+    if (apply && target && target.next !== el && target.next !== el.nextSibling){
+      moveCommand(el, parent, target.next, 'Move ' + friendlyName(el).toLowerCase());
+      buildElToolbar(); renderPanel();
+    }
+  }
+  function onUp(){ finish(true); }
+  function onKey(ev){ if (ev.key === 'Escape'){ ev.stopPropagation(); finish(false); } }
+  shield.addEventListener('mousemove', onMove);
+  window.addEventListener('mousemove', onMove);
+  window.addEventListener('mouseup', onUp);
+  window.addEventListener('keydown', onKey, true);
+}
+
+/* ---------------- text editing sessions ---------------- */
+function beginTextEdit(el, cx, cy){
+  if (App.editingEl === el) return;
+  if (App.editingEl) endTextEdit(true);
+  if (el.tagName === 'IMG') return;
+  App.editingEl = el;
+  App.editingBefore = el.innerHTML;
+  el.setAttribute('contenteditable', 'true');
+  el.setAttribute('spellcheck', 'false');
+  el.setAttribute('data-msed-ce', '');
+  try { App.idoc.execCommand('styleWithCSS', false, true); } catch(_e){}
+  el.focus();
+  if (cx !== undefined){
+    let range = null;
+    if (App.idoc.caretRangeFromPoint) range = App.idoc.caretRangeFromPoint(cx, cy);
+    else if (App.idoc.caretPositionFromPoint){
+      const pos = App.idoc.caretPositionFromPoint(cx, cy);
+      if (pos){ range = App.idoc.createRange(); range.setStart(pos.offsetNode, pos.offset); }
+    }
+    if (range){
+      const sel = App.iwin.getSelection();
+      sel.removeAllRanges(); sel.addRange(range);
+    }
+  }
+  showTextToolbar();
+}
+function endTextEdit(commit){
+  const el = App.editingEl;
+  if (!el) return;
+  App.editingEl = null;
+  el.removeAttribute('contenteditable');
+  el.removeAttribute('spellcheck');
+  el.removeAttribute('data-msed-ce');
+  hideTextToolbar(); hideLinkPop();
+  const after = el.innerHTML;
+  if (commit && after !== App.editingBefore){
+    record(htmlCommand(el, App.editingBefore, after, 'Edit text'));
+  } else if (!commit){
+    el.innerHTML = App.editingBefore;
+  }
+  App.editingBefore = null;
+  App.savedRange = null;
+}
+
+/* ---------------- floating text toolbar ---------------- */
+const textToolbar = $('#textToolbar');
+function buildTextToolbar(){
+  textToolbar.innerHTML = '';
+  const mkBtn = (ic, title, fn, id) => {
+    const b = h('button', { title, html: icon(ic), id: id || null });
+    b.addEventListener('mousedown', e => e.preventDefault()); // keep iframe selection
+    b.addEventListener('click', fn);
+    textToolbar.appendChild(b);
+    return b;
+  };
+  const sep = () => textToolbar.appendChild(h('span', { class: 'tt-sep' }));
+  mkBtn('bold', 'Bold (Ctrl+B)', () => execFmt('bold'), 'ttBold');
+  mkBtn('italic', 'Italic (Ctrl+I)', () => execFmt('italic'), 'ttItalic');
+  mkBtn('under', 'Underline (Ctrl+U)', () => execFmt('underline'), 'ttUnder');
+  mkBtn('strike', 'Cross out', () => execFmt('strikeThrough'), 'ttStrike');
+  sep();
+  // text colour
+  const cw1 = h('label', { class: 'colorwrap', title: 'Text colour', html:
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" style="width:15px;height:15px"><path d="M5 18 11.5 4h1L19 18M7.5 13h9"/></svg>' +
+    '<span class="swatchbar" style="background:#e11d48"></span>' });
+  const ci1 = h('input', { type: 'color', value: '#e11d48' });
+  ci1.addEventListener('input', () => {
+    cw1.querySelector('.swatchbar').style.background = ci1.value;
+    restoreRangeThen(() => execFmt('foreColor', ci1.value));
+  });
+  cw1.appendChild(ci1); textToolbar.appendChild(cw1);
+  // highlight colour
+  const cw2 = h('label', { class: 'colorwrap', title: 'Highlight colour', html:
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px"><path d="m9 11 4 4L21 7l-4-4-8 8ZM7 13l-4 6 2 2 6-4"/></svg>' +
+    '<span class="swatchbar" style="background:#fde047"></span>' });
+  const ci2 = h('input', { type: 'color', value: '#fde047' });
+  ci2.addEventListener('input', () => {
+    cw2.querySelector('.swatchbar').style.background = ci2.value;
+    restoreRangeThen(() => execFmt('hiliteColor', ci2.value));
+  });
+  cw2.appendChild(ci2); textToolbar.appendChild(cw2);
+  sep();
+  // font size
+  const sizeSel = h('select', { title: 'Text size', id: 'ttSize' });
+  [['','Size'],['13px','Small'],['16px','Normal'],['20px','Large'],['28px','X-Large'],['40px','Huge']].forEach(([v, l]) => {
+    sizeSel.appendChild(h('option', { value: v }, l));
+  });
+  sizeSel.addEventListener('mousedown', e => e.stopPropagation());
+  sizeSel.addEventListener('change', () => {
+    if (sizeSel.value) restoreRangeThen(() => applyFontSize(sizeSel.value));
+    sizeSel.value = '';
+  });
+  textToolbar.appendChild(sizeSel);
+  mkBtn('minus', 'Smaller text', () => bumpFontSize(1 / 1.2));
+  mkBtn('plus', 'Bigger text', () => bumpFontSize(1.2));
+  sep();
+  mkBtn('alignL', 'Align left', () => execFmt('justifyLeft'));
+  mkBtn('alignC', 'Centre', () => execFmt('justifyCenter'));
+  mkBtn('alignR', 'Align right', () => execFmt('justifyRight'));
+  sep();
+  mkBtn('ul', 'Bullet list', () => execFmt('insertUnorderedList'));
+  mkBtn('ol', 'Numbered list', () => execFmt('insertOrderedList'));
+  sep();
+  mkBtn('link', 'Add or edit a link', openLinkPop, 'ttLink');
+}
+buildTextToolbar();
+function execFmt(cmd, val){
+  if (!App.editingEl) return;
+  App.editingEl.focus();
+  try { App.idoc.execCommand('styleWithCSS', false, cmd === 'foreColor' || cmd === 'hiliteColor'); } catch(_e){}
+  App.idoc.execCommand(cmd, false, val || null);
+  refreshTextToolbarState();
+  markDirty();
+}
+function restoreRangeThen(fn){
+  if (App.savedRange && App.editingEl){
+    const sel = App.iwin.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(App.savedRange);
+  }
+  fn();
+}
+function applyFontSize(px){
+  if (!App.editingEl) return;
+  const sel = App.iwin.getSelection();
+  if (!sel.rangeCount || sel.isCollapsed){
+    styleCommand(App.editingEl, el => { el.style.fontSize = px; }, 'Change text size');
+    return;
+  }
+  // the classic trick: size 7 -> replace generated <font> with a styled span
+  App.idoc.execCommand('fontSize', false, '7');
+  App.editingEl.querySelectorAll('font[size="7"]').forEach(f => {
+    const span = App.idoc.createElement('span');
+    span.style.fontSize = px;
+    while (f.firstChild) span.appendChild(f.firstChild);
+    f.replaceWith(span);
+  });
+  markDirty();
+}
+function bumpFontSize(factor){
+  if (!App.editingEl) return;
+  const sel = App.iwin.getSelection();
+  let cur;
+  if (sel.rangeCount && !sel.isCollapsed && sel.anchorNode){
+    const n = sel.anchorNode.nodeType === 1 ? sel.anchorNode : sel.anchorNode.parentElement;
+    cur = parseFloat(App.iwin.getComputedStyle(n).fontSize) || 16;
+    restoreRangeThen(() => applyFontSize(Math.round(clamp(cur * factor, 8, 120)) + 'px'));
+  } else {
+    cur = parseFloat(App.iwin.getComputedStyle(App.editingEl).fontSize) || 16;
+    styleCommand(App.editingEl, el => { el.style.fontSize = Math.round(clamp(cur * factor, 8, 120)) + 'px'; }, 'Change text size');
+  }
+}
+function showTextToolbar(){ textToolbar.hidden = false; refreshTextToolbarState(); }
+function hideTextToolbar(){ textToolbar.hidden = true; }
+function positionTextToolbar(){
+  if (textToolbar.hidden || !App.editingEl){ return; }
+  if (!App.editingEl.isConnected){ hideTextToolbar(); return; }
+  const fr = $('#frameBox').getBoundingClientRect();
+  let r = null;
+  const sel = App.iwin.getSelection && App.iwin.getSelection();
+  if (sel && sel.rangeCount && App.editingEl.contains(sel.anchorNode)){
+    const rr = sel.getRangeAt(0).getBoundingClientRect();
+    if (rr && (rr.width || rr.height)) r = rr;
+  }
+  if (!r) r = App.editingEl.getBoundingClientRect();
+  const tw = textToolbar.offsetWidth, th = textToolbar.offsetHeight;
+  let top = fr.top + r.top - th - 10;
+  if (top < 58) top = fr.top + r.bottom + 10;
+  textToolbar.style.top = clamp(top, 58, window.innerHeight - th - 8) + 'px';
+  textToolbar.style.left = clamp(fr.left + r.left + r.width / 2 - tw / 2, 8, window.innerWidth - tw - 8) + 'px';
+}
+function refreshTextToolbarState(){
+  if (!App.idoc || textToolbar.hidden) return;
+  const states = { ttBold: 'bold', ttItalic: 'italic', ttUnder: 'underline', ttStrike: 'strikeThrough' };
+  for (const id in states){
+    let on = false;
+    try { on = App.idoc.queryCommandState(states[id]); } catch(_e){}
+    const b = $('#' + id);
+    if (b) b.classList.toggle('on', on);
+  }
+}
+
+/* ---------------- link popover ---------------- */
+const linkPop = $('#linkPop');
+function openLinkPop(){
+  if (!App.editingEl) return;
+  const sel = App.iwin.getSelection();
+  let a = null;
+  if (sel.anchorNode){
+    const n = sel.anchorNode.nodeType === 1 ? sel.anchorNode : sel.anchorNode.parentElement;
+    a = n && n.closest ? n.closest('a') : null;
+    if (a && !App.editingEl.contains(a) && a !== App.editingEl) a = null;
+  }
+  if (!a && App.editingEl.tagName === 'A') a = App.editingEl;
+  linkPop.hidden = false;
+  linkPop.innerHTML = '';
+  const input = h('input', { type: 'text', placeholder: 'https://example.com or #section-name', value: a ? (a.getAttribute('href') || '') : '' });
+  const nt = h('input', { type: 'checkbox' });
+  nt.checked = a ? a.getAttribute('target') === '_blank' : true;
+  const applyBtn = h('button', { class: 'btn btn-primary', style: 'height:32px' }, a ? 'Update link' : 'Add link');
+  applyBtn.addEventListener('click', () => {
+    const url = input.value.trim();
+    if (!url){ toast('Type a web address first.', { kind: 'warn' }); return; }
+    if (a){
+      attrCommand(a, 'href', url, 'Change link');
+      attrCommand(a, 'target', nt.checked ? '_blank' : null, 'Change link');
+    } else {
+      restoreRangeThen(() => {
+        App.idoc.execCommand('createLink', false, url);
+        const s2 = App.iwin.getSelection();
+        const n2 = s2.anchorNode && (s2.anchorNode.nodeType === 1 ? s2.anchorNode : s2.anchorNode.parentElement);
+        const newA = n2 && n2.closest ? n2.closest('a') : null;
+        if (newA && nt.checked) newA.setAttribute('target', '_blank');
+        markDirty();
+      });
+    }
+    hideLinkPop();
+  });
+  const row = h('div', { class: 'row' },
+    h('label', null, nt, 'Open in a new tab'),
+    h('span', { style: 'flex:1' }), applyBtn);
+  linkPop.append(input, row);
+  if (a){
+    const rm = h('button', { class: 'btn', style: 'height:32px;color:var(--danger)' }, 'Remove link');
+    rm.addEventListener('click', () => {
+      const parent = a.parentNode;
+      const kids = Array.from(a.childNodes);
+      perform({ label: 'Remove link',
+        redo(){ kids.forEach(k => parent.insertBefore(k, a)); a.remove(); },
+        undo(){ parent.insertBefore(a, kids[0]); kids.forEach(k => a.appendChild(k)); } });
+      hideLinkPop();
+    });
+    row.insertBefore(rm, row.firstChild);
+  }
+  const tr = textToolbar.getBoundingClientRect();
+  linkPop.style.top = (tr.bottom + 8) + 'px';
+  linkPop.style.left = clamp(tr.left, 8, window.innerWidth - 310) + 'px';
+  setTimeout(() => input.focus(), 0);
+}
+function hideLinkPop(){ linkPop.hidden = true; }
+document.addEventListener('mousedown', e => {
+  if (!linkPop.hidden && !linkPop.contains(e.target) && e.target.id !== 'ttLink') hideLinkPop();
+});
+
+/* ---------------- side panel (contextual properties) ---------------- */
+const CONTAINER_TAGS = new Set(['SECTION', 'DIV', 'HEADER', 'FOOTER', 'ARTICLE', 'ASIDE', 'NAV', 'MAIN', 'FORM', 'UL', 'OL', 'TABLE', 'FIGURE', 'BLOCKQUOTE']);
+function renderPanel(){
+  const el = App.selected;
+  const panel = $('#sidePanel');
+  if (!el || App.mode !== 'edit'){ panel.hidden = true; return; }
+  panel.hidden = false;
+  $('#spTitle').textContent = friendlyName(el);
+  const body = $('#spBody');
+  body.innerHTML = '';
+  body.appendChild(buildCrumbs(el));
+  if (el.tagName === 'IMG') body.appendChild(imagePanel(el));
+  if (el.tagName === 'A' || el.tagName === 'BUTTON') body.appendChild(buttonPanel(el));
+  const isContainer = CONTAINER_TAGS.has(el.tagName);
+  const hasBg = App.iwin.getComputedStyle(el).backgroundImage !== 'none';
+  if (isContainer || hasBg) body.appendChild(sectionPanel(el, hasBg));
+  body.appendChild(addBlockPanel(el));
+}
+function buildCrumbs(el){
+  const wrap = h('div', { class: 'crumbs' });
+  const chain = [];
+  let n = el;
+  while (n && n !== App.idoc.body && chain.length < 5){ chain.unshift(n); n = n.parentElement; }
+  chain.forEach((node, i) => {
+    const c = h('button', { class: 'crumb' + (node === el ? ' cur' : ''), title: node === el ? 'This is what’s selected' : 'Select this instead' },
+      friendlyName(node));
+    if (node !== el) c.addEventListener('click', () => selectEl(node));
+    wrap.appendChild(c);
+    if (i < chain.length - 1) wrap.appendChild(h('span', { style: 'color:#c9cdd6;align-self:center;font-size:11px' }, '›'));
+  });
+  return wrap;
+}
+function sec(title, ...kids){
+  const s = h('div', { class: 'p-sec' }, h('h4', null, title));
+  kids.forEach(k => k && s.appendChild(k));
+  return s;
+}
+function field(label, control){
+  return h('div', { class: 'field' }, h('label', null, label), control);
+}
+
+/* ---------------- image panel ---------------- */
+function imagePanel(img){
+  const prev = h('div', { class: 'imgprev', style: 'background-image:url("' + String(img.currentSrc || img.src).replace(/"/g, '%22') + '")' });
+  const replaceBtn = h('button', { class: 'pbtn wide', html: icon('img') + '<span>Replace image…</span>' });
+  replaceBtn.addEventListener('click', () => pickImage(file => replaceImage(img, file)));
+  const altIn = h('input', { type: 'text', value: img.getAttribute('alt') || '', placeholder: 'Describe this image' });
+  altIn.addEventListener('change', () => attrCommand(img, 'alt', altIn.value, 'Edit image description'));
+  const sizeRow = h('div', { class: 'btnrow' });
+  [['Small', '25%'], ['Medium', '50%'], ['Large', '75%'], ['Full', '100%']].forEach(([l, w]) => {
+    const b = h('button', { class: 'pbtn' + (img.style.width === w ? ' on' : '') }, l);
+    b.addEventListener('click', () => {
+      styleCommand(img, e2 => { e2.style.width = w; e2.style.height = 'auto'; }, 'Resize image');
+      renderPanel();
+    });
+    sizeRow.appendChild(b);
+  });
+  const alignRow = h('div', { class: 'btnrow' });
+  [['Left', 'l'], ['Centre', 'c'], ['Right', 'r']].forEach(([l, mode]) => {
+    const b = h('button', { class: 'pbtn' }, l);
+    b.addEventListener('click', () => {
+      styleCommand(img, e2 => {
+        e2.style.display = 'block';
+        e2.style.marginLeft = mode === 'l' ? '0' : 'auto';
+        e2.style.marginRight = mode === 'r' ? '0' : 'auto';
+      }, 'Align image');
+    });
+    alignRow.appendChild(b);
+  });
+  const roundRow = h('div', { class: 'btnrow' });
+  [['Square', '0'], ['Soft', '10px'], ['Round', '24px'], ['Circle', '50%']].forEach(([l, v]) => {
+    const b = h('button', { class: 'pbtn' + ((img.style.borderRadius || '0') === v ? ' on' : '') }, l);
+    b.addEventListener('click', () => {
+      styleCommand(img, e2 => { e2.style.borderRadius = v === '0' ? '' : v; }, 'Round image corners');
+      renderPanel();
+    });
+    roundRow.appendChild(b);
+  });
+  // link wrapping
+  const parentA = img.parentElement && img.parentElement.tagName === 'A' ? img.parentElement : null;
+  const linkIn = h('input', { type: 'text', value: parentA ? (parentA.getAttribute('href') || '') : '', placeholder: 'https:// — where should clicking go?' });
+  linkIn.addEventListener('change', () => {
+    const url = linkIn.value.trim();
+    if (parentA){
+      if (url) attrCommand(parentA, 'href', url, 'Change image link');
+      else {
+        const parent = parentA.parentNode, next = parentA.nextSibling;
+        perform({ label: 'Remove image link',
+          redo(){ parent.insertBefore(img, parentA); parentA.remove(); },
+          undo(){ parent.insertBefore(parentA, img); parentA.appendChild(img); } });
+      }
+    } else if (url){
+      const a = App.idoc.createElement('a');
+      a.setAttribute('href', url);
+      a.setAttribute('target', '_blank');
+      const parent = img.parentNode, next = img.nextSibling;
+      perform({ label: 'Link image',
+        redo(){ parent.insertBefore(a, next && next.parentNode === parent ? next : null); a.appendChild(img); },
+        undo(){ parent.insertBefore(img, a); a.remove(); } });
+    }
+    renderPanel();
+  });
+  return sec('Image', prev,
+    h('div', { class: 'btnrow', style: 'margin-bottom:10px' }, replaceBtn),
+    field('Description (for accessibility)', altIn),
+    field('Size', sizeRow),
+    field('Position', alignRow),
+    field('Corners', roundRow),
+    field('Link (opens when clicked)', linkIn));
+}
+function pickImage(cb){
+  const inp = $('#imgPicker');
+  inp.value = '';
+  inp.onchange = () => { const f = inp.files[0]; if (f) cb(f); };
+  inp.click();
+}
+function replaceImage(img, file){
+  fileToDataURI(file, uri => {
+    const cmds = [];
+    const before = { src: img.getAttribute('src'), srcset: img.getAttribute('srcset'), sizes: img.getAttribute('sizes') };
+    perform({ label: 'Replace image',
+      redo(){ img.setAttribute('src', uri); img.removeAttribute('srcset'); img.removeAttribute('sizes'); },
+      undo(){
+        if (before.src === null) img.removeAttribute('src'); else img.setAttribute('src', before.src);
+        if (before.srcset !== null) img.setAttribute('srcset', before.srcset);
+        if (before.sizes !== null) img.setAttribute('sizes', before.sizes);
+      } });
+    renderPanel();
+    toast('Image replaced.');
+  });
+}
+/* Reads an image file; if it's big, offers to shrink it before
+   embedding (images are embedded as data URIs so the saved file
+   stays fully self-contained). */
+function fileToDataURI(file, cb){
+  const rd = new FileReader();
+  rd.onload = () => {
+    const uri = String(rd.result);
+    const probe = new Image();
+    probe.onload = () => {
+      const big = file.size > 400 * 1024 || probe.naturalWidth > 1920;
+      if (!big){ cb(uri); return; }
+      const kb = Math.round(file.size / 1024);
+      showModal({
+        title: 'That image is quite large',
+        body: '<p style="color:var(--muted);line-height:1.5">This image is ' + kb + ' KB' +
+              (probe.naturalWidth > 1920 ? ' and ' + probe.naturalWidth + ' pixels wide' : '') +
+              '. Large images make the saved file slow to open and share. We can shrink it for you — it will still look sharp on screen.</p>',
+        buttons: [
+          { label: 'Keep original', fn: () => { cb(uri); } },
+          { label: 'Shrink it (recommended)', primary: true, fn: () => { cb(downscaleImage(probe, file.type)); } }
+        ]
+      });
+    };
+    probe.onerror = () => toast('That file doesn’t seem to be an image.', { kind: 'warn' });
+    probe.src = uri;
+  };
+  rd.readAsDataURL(file);
+}
+function downscaleImage(imgEl, mime){
+  const maxW = 1600;
+  const scale = Math.min(1, maxW / imgEl.naturalWidth);
+  const cv = document.createElement('canvas');
+  cv.width = Math.round(imgEl.naturalWidth * scale);
+  cv.height = Math.round(imgEl.naturalHeight * scale);
+  cv.getContext('2d').drawImage(imgEl, 0, 0, cv.width, cv.height);
+  // keep png (transparency) as png; everything else becomes quality jpeg
+  return mime === 'image/png' ? cv.toDataURL('image/png') : cv.toDataURL('image/jpeg', 0.85);
+}
+
+/* image corner-handle resize */
+rzHandles.forEach(hd => {
+  hd.addEventListener('mousedown', e => {
+    e.preventDefault();
+    const img = App.selected;
+    if (!img || img.tagName !== 'IMG') return;
+    const startX = e.clientX;
+    const startW = img.getBoundingClientRect().width;
+    const left = hd.classList.contains('nw') || hd.classList.contains('sw');
+    const beforeStyle = img.getAttribute('style');
+    function onMove(ev){
+      const dx = (ev.clientX - startX) * (left ? -1 : 1);
+      img.style.width = Math.round(clamp(startW + dx, 24, 4000)) + 'px';
+      img.style.height = 'auto';
+    }
+    function onUp(){
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+      const afterStyle = img.getAttribute('style');
+      if (afterStyle !== beforeStyle){
+        const apply = v => { if (v === null) img.removeAttribute('style'); else img.setAttribute('style', v); };
+        record({ label: 'Resize image', redo(){ apply(afterStyle); }, undo(){ apply(beforeStyle); } });
+      }
+    }
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  });
+});
+
+/* ---------------- section styling panel ---------------- */
+function sectionPanel(el, hasBg){
+  const cs = App.iwin.getComputedStyle(el);
+  // background colour
+  const bgWrap = h('div', { class: 'colorfield' });
+  const bgIn = h('input', { type: 'color', value: rgbToHex(cs.backgroundColor) });
+  bgIn.addEventListener('input', debounce(() => {
+    styleCommand(el, e2 => { e2.style.backgroundColor = bgIn.value; }, 'Change background colour');
+  }, 250));
+  const bgClear = h('button', { class: 'pbtn' }, 'None');
+  bgClear.addEventListener('click', () => {
+    styleCommand(el, e2 => { e2.style.backgroundColor = ''; }, 'Remove background colour');
+    renderPanel();
+  });
+  bgWrap.append(bgIn, bgClear);
+  // text colour
+  const txWrap = h('div', { class: 'colorfield' });
+  const txIn = h('input', { type: 'color', value: rgbToHex(cs.color) });
+  txIn.addEventListener('input', debounce(() => {
+    styleCommand(el, e2 => { e2.style.color = txIn.value; }, 'Change text colour');
+  }, 250));
+  txWrap.append(txIn);
+  // background image
+  const bgiRow = h('div', { class: 'btnrow' });
+  const bgiSet = h('button', { class: 'pbtn', html: icon('img') + '<span>' + (hasBg ? 'Replace' : 'Add') + ' photo</span>' });
+  bgiSet.addEventListener('click', () => pickImage(f => fileToDataURI(f, uri => {
+    styleCommand(el, e2 => {
+      e2.style.backgroundImage = 'url("' + uri + '")';
+      e2.style.backgroundSize = 'cover';
+      e2.style.backgroundPosition = 'center';
+    }, 'Change background photo');
+    renderPanel();
+  })));
+  bgiRow.appendChild(bgiSet);
+  if (hasBg){
+    const bgiRm = h('button', { class: 'pbtn danger' }, 'Remove');
+    bgiRm.addEventListener('click', () => {
+      styleCommand(el, e2 => { e2.style.backgroundImage = 'none'; }, 'Remove background photo');
+      renderPanel();
+    });
+    bgiRow.appendChild(bgiRm);
+  }
+  // padding presets
+  const padRow = h('div', { class: 'btnrow' });
+  [['S', '16px'], ['M', '32px'], ['L', '56px'], ['XL', '88px']].forEach(([l, v]) => {
+    const b = h('button', { class: 'pbtn' + (el.style.padding === v ? ' on' : '') }, l);
+    b.addEventListener('click', () => {
+      styleCommand(el, e2 => { e2.style.padding = v; }, 'Change spacing');
+      renderPanel();
+    });
+    padRow.appendChild(b);
+  });
+  // width toggle
+  const widthRow = h('div', { class: 'btnrow' });
+  const contained = !!el.style.maxWidth;
+  const wFull = h('button', { class: 'pbtn' + (!contained ? ' on' : '') }, 'Full width');
+  const wBox = h('button', { class: 'pbtn' + (contained ? ' on' : '') }, 'Contained');
+  wFull.addEventListener('click', () => {
+    styleCommand(el, e2 => { e2.style.maxWidth = ''; e2.style.marginLeft = ''; e2.style.marginRight = ''; }, 'Make full width');
+    renderPanel();
+  });
+  wBox.addEventListener('click', () => {
+    styleCommand(el, e2 => { e2.style.maxWidth = '1100px'; e2.style.marginLeft = 'auto'; e2.style.marginRight = 'auto'; }, 'Contain width');
+    renderPanel();
+  });
+  widthRow.append(wFull, wBox);
+  return sec('Style this ' + friendlyName(el).toLowerCase(),
+    field('Background colour', bgWrap),
+    field('Text colour', txWrap),
+    field('Background photo', bgiRow),
+    field('Inner spacing', padRow),
+    field('Width', widthRow));
+}
+
+/* ---------------- button / link panel ---------------- */
+function derivePrimaryColor(){
+  // find the most common non-transparent background among existing buttons/links
+  const doc = App.idoc;
+  const counts = {};
+  Array.from(doc.querySelectorAll('button, a')).slice(0, 200).forEach(b => {
+    const c = App.iwin.getComputedStyle(b).backgroundColor;
+    if (c && c !== 'rgba(0, 0, 0, 0)' && c !== 'transparent') counts[c] = (counts[c] || 0) + 1;
+  });
+  let best = null, n = 0;
+  for (const c in counts) if (counts[c] > n){ best = c; n = counts[c]; }
+  return best ? rgbToHex(best) : '#4f46e5';
+}
+function buttonPanel(el){
+  const isLink = el.tagName === 'A';
+  const kids = [];
+  if (isLink){
+    const urlIn = h('input', { type: 'text', value: el.getAttribute('href') || '', placeholder: 'https://…' });
+    urlIn.addEventListener('change', () => attrCommand(el, 'href', urlIn.value.trim(), 'Change link address'));
+    kids.push(field('Goes to', urlIn));
+    const nt = h('input', { type: 'checkbox' });
+    nt.checked = el.getAttribute('target') === '_blank';
+    nt.addEventListener('change', () => attrCommand(el, 'target', nt.checked ? '_blank' : null, 'Change link'));
+    kids.push(h('div', { class: 'field' }, h('label', { style: 'display:flex;align-items:center;gap:7px;cursor:pointer' }, nt, 'Open in a new tab')));
+  }
+  const styleRow = h('div', { class: 'btnrow' });
+  const primary = derivePrimaryColor();
+  const base = 'display:inline-block;padding:10px 22px;border-radius:8px;font-weight:600;text-decoration:none;cursor:pointer;text-align:center;';
+  [
+    ['Primary', base + 'background-color:' + primary + ';color:#fff;border:2px solid ' + primary + ';'],
+    ['Secondary', base + 'background-color:#f1f2f6;color:#1f2430;border:2px solid #f1f2f6;'],
+    ['Outline', base + 'background-color:transparent;color:' + primary + ';border:2px solid ' + primary + ';'],
+  ].forEach(([l, css]) => {
+    const b = h('button', { class: 'pbtn' }, l);
+    b.addEventListener('click', () => {
+      const beforeStyle = el.getAttribute('style');
+      perform({ label: 'Style button',
+        redo(){ el.setAttribute('style', css); },
+        undo(){ if (beforeStyle === null) el.removeAttribute('style'); else el.setAttribute('style', beforeStyle); } });
+    });
+    styleRow.appendChild(b);
+  });
+  kids.push(field('Button style', styleRow));
+  kids.push(h('p', { class: 'hint' }, 'To change the label, double-click the ' + (isLink ? 'link' : 'button') + ' or use “Edit text”.'));
+  const s = sec(isLink ? 'Link' : 'Button');
+  kids.forEach(k => s.appendChild(k));
+  return s;
+}
+
+/* ---------------- add content blocks ---------------- */
+function inheritedFont(el){
+  try { return App.iwin.getComputedStyle(el).fontFamily; } catch(_e){ return 'inherit'; }
+}
+const PLACEHOLDER_IMG = 'data:image/svg+xml;utf8,' + encodeURIComponent(
+  '<svg xmlns="http://www.w3.org/2000/svg" width="640" height="360"><rect width="640" height="360" fill="#e5e7eb"/><circle cx="230" cy="140" r="40" fill="#c3c8d2"/><path d="M120 300 260 180l110 100 70-60 80 80z" fill="#c3c8d2"/><text x="320" y="330" font-family="sans-serif" font-size="22" fill="#8b91a0" text-anchor="middle">Click to replace this image</text></svg>');
+function blockFactories(refEl){
+  const doc = App.idoc;
+  const mk = (tag, css, text) => {
+    const e2 = doc.createElement(tag);
+    if (css) e2.style.cssText = css;
+    if (text) e2.textContent = text;
+    return e2;
+  };
+  const primary = derivePrimaryColor();
+  return {
+    heading: { label: 'Heading', ic: 'head', make: () => mk('h2', 'margin:24px 0 12px;', 'New heading') },
+    paragraph: { label: 'Paragraph', ic: 'para', make: () => mk('p', 'margin:12px 0;line-height:1.6;', 'New paragraph. Click it to start writing.') },
+    image: { label: 'Image', ic: 'img', make: () => {
+      const img = doc.createElement('img');
+      img.src = PLACEHOLDER_IMG;
+      img.alt = 'Placeholder image';
+      img.style.cssText = 'max-width:100%;width:50%;height:auto;display:block;margin:16px auto;border-radius:8px;';
+      return img;
+    } },
+    button: { label: 'Button', ic: 'btn', make: () => {
+      const a = doc.createElement('a');
+      a.href = '#';
+      a.textContent = 'Click here';
+      a.style.cssText = 'display:inline-block;margin:12px 0;padding:11px 24px;border-radius:8px;font-weight:600;text-decoration:none;background-color:' + primary + ';color:#fff;';
+      return a;
+    } },
+    divider: { label: 'Divider', ic: 'minus', make: () => mk('hr', 'margin:28px 0;border:none;border-top:1px solid #d7dae0;') },
+    spacer: { label: 'Spacer', ic: 'spacerIcon', make: () => mk('div', 'height:48px;') },
+    columns: { label: 'Two columns', ic: 'colsIcon', make: () => {
+      const wrap = mk('section', 'display:flex;gap:28px;flex-wrap:wrap;margin:24px 0;');
+      for (let i = 1; i <= 2; i++){
+        const col = mk('div', 'flex:1 1 260px;min-width:0;');
+        col.appendChild(mk('h3', 'margin:0 0 8px;', 'Column ' + i + ' heading'));
+        col.appendChild(mk('p', 'margin:0;line-height:1.6;', 'Write something here.'));
+        wrap.appendChild(col);
+      }
+      return wrap;
+    } },
+  };
+}
+function addBlockPanel(el){
+  const grid = h('div', { class: 'blockgrid' });
+  const factories = blockFactories(el);
+  for (const key in factories){
+    const f = factories[key];
+    const b = h('button', { class: 'pbtn', html: icon(f.ic) + '<span>' + f.label + '</span>' });
+    b.addEventListener('click', () => {
+      const node = f.make();
+      insertCommand(node, el.parentNode, el.nextSibling, 'Add ' + f.label.toLowerCase());
+      selectEl(node);
+      node.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      toast('Added below the selected ' + friendlyName(el).toLowerCase() + '. Drag it to move it elsewhere.', { duration: 2600 });
+    });
+    grid.appendChild(b);
+  }
+  return sec('Add content below', grid);
+}
+
+/* ---------------- tab detection & management ---------------- */
+function detectTabs(){
+  const doc = App.idoc;
+  if (!doc || !doc.body) return;
+  const groups = [];
+  const seenButtons = new Set();
+  const push = (btn, panelEl, groupKey) => {
+    if (!btn || seenButtons.has(btn)) return;
+    seenButtons.add(btn);
+    let g = groups.find(x => x.key === groupKey);
+    if (!g){ g = { key: groupKey, tabs: [] }; groups.push(g); }
+    g.tabs.push({ btn, panel: panelEl });
+  };
+  // pattern 1: ARIA tabs
+  doc.querySelectorAll('[role="tablist"]').forEach((list, gi) => {
+    list.querySelectorAll('[role="tab"]').forEach(btn => {
+      const pid = btn.getAttribute('aria-controls');
+      push(btn, pid ? doc.getElementById(pid) : null, 'aria' + gi);
+    });
+  });
+  // pattern 2: data attributes (data-tab / data-target / data-tab-target)
+  doc.querySelectorAll('[data-tab],[data-target],[data-tab-target]').forEach(btn => {
+    if (seenButtons.has(btn)) return;
+    const v = btn.getAttribute('data-tab') || btn.getAttribute('data-target') || btn.getAttribute('data-tab-target') || '';
+    let panelEl = null;
+    try {
+      panelEl = doc.getElementById(v) || (v && /^[.#]/.test(v) ? doc.querySelector(v) : doc.querySelector('[data-tab-panel="' + v + '"],[data-panel="' + v + '"]'));
+    } catch(_e){}
+    push(btn, panelEl, 'data:' + (btn.parentElement ? Array.from(doc.querySelectorAll('*')).indexOf(btn.parentElement) : 0));
+  });
+  // pattern 3: nav of same-page links
+  doc.querySelectorAll('nav, ul').forEach((nav, gi) => {
+    const links = Array.from(nav.querySelectorAll('a[href^="#"]')).filter(a => {
+      const id = a.getAttribute('href').slice(1);
+      return id && doc.getElementById(id);
+    });
+    if (links.length >= 2 && !links.some(l => seenButtons.has(l))){
+      // only treat as tabs if the targets look like panels (some are display:none)
+      const targets = links.map(a => doc.getElementById(a.getAttribute('href').slice(1)));
+      const anyHidden = targets.some(t => App.iwin.getComputedStyle(t).display === 'none');
+      if (anyHidden) links.forEach(a => push(a, doc.getElementById(a.getAttribute('href').slice(1)), 'nav' + gi));
+    }
+  });
+  App.tabGroups = groups.filter(g => g.tabs.length >= 2);
+  $('#btnTabs').hidden = !App.tabGroups.length;
+}
+function detectTabsRefresh(){ if (App.idoc) detectTabs(); }
+function tabLabel(btn){ return (btn.textContent || '').trim().replace(/\s+/g, ' ').slice(0, 40) || '(unnamed tab)'; }
+function largestTextNode(el){
+  let best = null;
+  const walker = App.idoc.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+  let n;
+  while ((n = walker.nextNode())){
+    if (!best || n.nodeValue.trim().length > best.nodeValue.trim().length) best = n;
+  }
+  return best && best.nodeValue.trim() ? best : null;
+}
+$('#btnTabs').addEventListener('click', showTabsModal);
+function showTabsModal(){
+  detectTabs();
+  if (!App.tabGroups.length){ toast('No tabs found on this page.'); return; }
+  const body = h('div');
+  App.tabGroups.forEach((g, gi) => {
+    const wrap = h('div', { class: 'tabs-group' });
+    if (App.tabGroups.length > 1) wrap.appendChild(h('h5', null, 'Tab set ' + (gi + 1)));
+    const canReorder = g.tabs.length > 1 &&
+      g.tabs.every(t => t.btn.parentElement === g.tabs[0].btn.parentElement) &&
+      g.tabs.every(t => !t.panel || !g.tabs[0].panel || t.panel.parentElement === g.tabs[0].panel.parentElement);
+    g.tabs.forEach((t, i) => {
+      const nameIn = h('input', { type: 'text', value: tabLabel(t.btn), title: 'Rename this tab' });
+      nameIn.addEventListener('change', () => {
+        const node = largestTextNode(t.btn);
+        if (node) perform(textNodeCommand(node, nameIn.value, 'Rename tab'));
+        else attrCommand(t.btn, 'aria-label', nameIn.value, 'Rename tab');
+      });
+      const goBtn = h('button', { class: 'btn', title: 'Show this tab in the page', html: icon('go') });
+      goBtn.addEventListener('click', () => { t.btn.click(); t.btn.scrollIntoView({ block: 'nearest' }); });
+      const upB = h('button', { class: 'btn', title: 'Move earlier', html: icon('up') });
+      const dnB = h('button', { class: 'btn', title: 'Move later', html: icon('down') });
+      upB.disabled = !canReorder || i === 0;
+      dnB.disabled = !canReorder || i === g.tabs.length - 1;
+      const doMove = dir => {
+        const other = g.tabs[i + dir];
+        if (!other) return;
+        const cmds = [];
+        const mkMove = (elm, ref, before) => {
+          const fp = elm.parentNode, fn2 = elm.nextSibling;
+          return { redo(){ fp.insertBefore(elm, before ? ref : ref.nextSibling); },
+                   undo(){ fp.insertBefore(elm, fn2 && fn2.parentNode === fp ? fn2 : null); } };
+        };
+        cmds.push(mkMove(t.btn, other.btn, dir < 0));
+        if (t.panel && other.panel && t.panel.parentElement === other.panel.parentElement){
+          cmds.push(mkMove(t.panel, other.panel, dir < 0));
+        }
+        perform(compositeCommand(cmds, 'Reorder tabs'));
+        showTabsModal(); // rebuild with fresh order
+      };
+      upB.addEventListener('click', () => doMove(-1));
+      dnB.addEventListener('click', () => doMove(1));
+      wrap.appendChild(h('div', { class: 'tab-row' }, nameIn, goBtn, upB, dnB));
+    });
+    if (!canReorder) wrap.appendChild(h('p', { class: 'hint' }, 'These tabs are built in a way that can’t be safely reordered here, but you can still rename them and jump to them.'));
+    body.appendChild(wrap);
+  });
+  body.appendChild(h('p', { class: 'hint', style: 'margin-top:6px' }, 'Renaming changes the tab’s label. Use the arrow to show a tab, then click inside it to edit its content.'));
+  showModal({ title: 'Tabs on this page', body, wide: true, buttons: [{ label: 'Done', primary: true }] });
+}
+
+/* ---------------- find & replace ---------------- */
+const Find = { matches: [], index: -1, query: '', caseSensitive: false };
+$('#btnFind').addEventListener('click', () => toggleFindBar(true));
+$('#findClose').addEventListener('click', () => toggleFindBar(false));
+$('#findCase').addEventListener('click', () => {
+  Find.caseSensitive = !Find.caseSensitive;
+  $('#findCase').classList.toggle('on', Find.caseSensitive);
+  runFind();
+});
+$('#findInput').addEventListener('input', debounce(runFind, 180));
+$('#findInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter'){ e.preventDefault(); stepFind(e.shiftKey ? -1 : 1); }
+  if (e.key === 'Escape') toggleFindBar(false);
+});
+$('#replInput').addEventListener('keydown', e => { if (e.key === 'Escape') toggleFindBar(false); });
+$('#findPrev').addEventListener('click', () => stepFind(-1));
+$('#findNext').addEventListener('click', () => stepFind(1));
+$('#replOne').addEventListener('click', replaceCurrent);
+$('#replAll').addEventListener('click', replaceAllMatches);
+function toggleFindBar(show){
+  $('#findBar').hidden = !show;
+  if (show){
+    endTextEdit(true);
+    $('#findInput').focus();
+    $('#findInput').select();
+    runFind();
+  } else {
+    findHl.hidden = true;
+    Find.matches = [];
+  }
+}
+function textNodesUnder(root){
+  const out = [];
+  const walker = App.idoc.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+    acceptNode(node){
+      const p = node.parentElement;
+      if (!p) return NodeFilter.FILTER_REJECT;
+      const tag = p.tagName.toUpperCase();
+      if (tag === 'SCRIPT' || tag === 'STYLE' || tag === 'NOSCRIPT') return NodeFilter.FILTER_REJECT;
+      return NodeFilter.FILTER_ACCEPT;
+    }
+  });
+  let n;
+  while ((n = walker.nextNode())) out.push(n);
+  return out;
+}
+function runFind(){
+  Find.query = $('#findInput').value;
+  Find.matches = [];
+  Find.index = -1;
+  findHl.hidden = true;
+  if (!App.idoc || !Find.query){ $('#findCount').textContent = '–'; return; }
+  const q = Find.caseSensitive ? Find.query : Find.query.toLowerCase();
+  for (const node of textNodesUnder(App.idoc.body)){
+    const hay = Find.caseSensitive ? node.nodeValue : node.nodeValue.toLowerCase();
+    let idx = 0;
+    while ((idx = hay.indexOf(q, idx)) !== -1){
+      Find.matches.push({ node, start: idx });
+      idx += q.length;
+    }
+  }
+  $('#findCount').textContent = Find.matches.length ? '0 of ' + Find.matches.length : 'No matches';
+  if (Find.matches.length) stepFind(1);
+}
+function stepFind(dir){
+  if (!Find.matches.length) return;
+  Find.index = (Find.index + dir + Find.matches.length) % Find.matches.length;
+  $('#findCount').textContent = (Find.index + 1) + ' of ' + Find.matches.length;
+  const m = Find.matches[Find.index];
+  if (!m.node.isConnected){ runFind(); return; }
+  // if the match lives inside a hidden tab panel, switch to that tab first
+  const parentEl = m.node.parentElement;
+  if (parentEl && parentEl.getBoundingClientRect().width === 0){
+    for (const g of App.tabGroups){
+      for (const t of g.tabs){
+        if (t.panel && t.panel.contains(parentEl)){ t.btn.click(); break; }
+      }
+    }
+  }
+  try {
+    const range = App.idoc.createRange();
+    range.setStart(m.node, m.start);
+    range.setEnd(m.node, m.start + Find.query.length);
+    (parentEl || m.node.parentNode).scrollIntoView({ block: 'center' });
+    const r = range.getBoundingClientRect();
+    if (r.width || r.height){ placeBox(findHl, r, 2); findHl.hidden = false; }
+    else findHl.hidden = true;
+  } catch(_e){ findHl.hidden = true; }
+}
+function replaceCurrent(){
+  if (Find.index < 0 || !Find.matches.length) return;
+  const m = Find.matches[Find.index];
+  const repl = $('#replInput').value;
+  if (!m.node.isConnected){ runFind(); return; }
+  const v = m.node.nodeValue;
+  perform(textNodeCommand(m.node, v.slice(0, m.start) + repl + v.slice(m.start + Find.query.length), 'Replace text'));
+  const at = Find.index;
+  runFind();
+  if (Find.matches.length){
+    Find.index = clamp(at - 1, -1, Find.matches.length - 1);
+    stepFind(1);
+  }
+}
+function replaceAllInString(v, q, repl, caseSensitive){
+  const hay = caseSensitive ? v : v.toLowerCase();
+  const needle = caseSensitive ? q : q.toLowerCase();
+  let out = '', i = 0, idx;
+  while ((idx = hay.indexOf(needle, i)) !== -1){
+    out += v.slice(i, idx) + repl;
+    i = idx + q.length;
+  }
+  return out + v.slice(i);
+}
+function replaceAllMatches(){
+  if (!Find.matches.length) return;
+  const repl = $('#replInput').value;
+  const q = Find.query;
+  const cmds = [];
+  // group matches per node, apply right-to-left so offsets stay valid
+  const byNode = new Map();
+  Find.matches.forEach(m => {
+    if (!byNode.has(m.node)) byNode.set(m.node, []);
+    byNode.get(m.node).push(m.start);
+  });
+  let count = 0;
+  byNode.forEach((starts, node) => {
+    let v = node.nodeValue;
+    starts.sort((a, b) => b - a).forEach(s => { v = v.slice(0, s) + repl + v.slice(s + q.length); count++; });
+    cmds.push(textNodeCommand(node, v, null));
+  });
+  // also swap the browser-tab title, so renaming a customer/product
+  // really covers the whole file
+  const doc = App.idoc;
+  const oldTitle = doc.title;
+  const newTitle = replaceAllInString(oldTitle, q, repl, Find.caseSensitive);
+  if (newTitle !== oldTitle){
+    count += 1;
+    cmds.push({ redo(){ doc.title = newTitle; }, undo(){ doc.title = oldTitle; } });
+  }
+  perform(compositeCommand(cmds, 'Replace all “' + q + '”'));
+  toast('Replaced ' + count + ' occurrence' + (count === 1 ? '' : 's') + '.', { action: { label: 'Undo', fn: undo } });
+  runFind();
+}
+
+/* ---------------- page settings (title / description / icon) ---------------- */
+$('#btnPage').addEventListener('click', showPageSettings);
+function ensureHeadEl(selector, create){
+  const doc = App.idoc;
+  let el = doc.head.querySelector(selector);
+  let created = null;
+  if (!el){ el = create(doc); created = el; }
+  return { el, created };
+}
+function showPageSettings(){
+  if (!App.idoc) return;
+  const doc = App.idoc;
+  const titleIn = h('input', { type: 'text', value: doc.title || '' });
+  const metaDesc = doc.head.querySelector('meta[name="description" i]');
+  const descIn = h('textarea', null, metaDesc ? (metaDesc.getAttribute('content') || '') : '');
+  let favData = null;
+  const favBtn = h('button', { class: 'pbtn', html: icon('img') + '<span>Choose icon…</span>' });
+  const favNote = h('span', { class: 'hint', style: 'align-self:center' }, 'Shown in the browser tab.');
+  favBtn.addEventListener('click', () => pickImage(f => fileToDataURI(f, uri => {
+    favData = uri;
+    favBtn.innerHTML = icon('check') + '<span>Icon chosen</span>';
+  })));
+  const body = h('div');
+  body.appendChild(field('Page title', titleIn));
+  body.appendChild(field('Description (used by search and link previews)', descIn));
+  body.appendChild(h('div', { class: 'field' }, h('label', null, 'Page icon'), h('div', { class: 'btnrow' }, favBtn, favNote)));
+  // in-session version history
+  if (App.saves.length){
+    const hist = h('div', { class: 'p-sec' }, h('h4', null, 'Versions saved this session'));
+    App.saves.slice().reverse().forEach(s => {
+      const row = h('div', { class: 'hist-row' },
+        h('b', null, s.name),
+        h('span', null, new Date(s.t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })));
+      const rb = h('button', { class: 'pbtn' }, 'Restore');
+      rb.addEventListener('click', () => {
+        confirmModal('Restore this version?',
+          'The page will go back to how it was when you saved “' + s.name + '”. Anything done since then is discarded (this can’t be undone).',
+          'Restore', () => loadHTML(s.html, App.fileName));
+      });
+      row.appendChild(rb);
+      hist.appendChild(row);
+    });
+    body.appendChild(hist);
+  }
+  showModal({
+    title: 'Page settings', body, wide: true,
+    buttons: [
+      { label: 'Cancel' },
+      { label: 'Apply', primary: true, fn(){
+        const cmds = [];
+        const oldTitle = doc.title;
+        const newTitle = titleIn.value;
+        if (newTitle !== oldTitle) cmds.push({ redo(){ doc.title = newTitle; }, undo(){ doc.title = oldTitle; } });
+        const newDesc = descIn.value.trim();
+        if (metaDesc){
+          const oldC = metaDesc.getAttribute('content') || '';
+          if (newDesc !== oldC) cmds.push({ redo(){ metaDesc.setAttribute('content', newDesc); }, undo(){ metaDesc.setAttribute('content', oldC); } });
+        } else if (newDesc){
+          const m = doc.createElement('meta');
+          m.setAttribute('name', 'description');
+          m.setAttribute('content', newDesc);
+          cmds.push({ redo(){ doc.head.appendChild(m); }, undo(){ m.remove(); } });
+        }
+        if (favData){
+          const existing = doc.head.querySelector('link[rel~="icon" i]');
+          if (existing){
+            const oldHref = existing.getAttribute('href');
+            cmds.push({ redo(){ existing.setAttribute('href', favData); }, undo(){ existing.setAttribute('href', oldHref); } });
+          } else {
+            const l = doc.createElement('link');
+            l.setAttribute('rel', 'icon');
+            l.setAttribute('href', favData);
+            cmds.push({ redo(){ doc.head.appendChild(l); }, undo(){ l.remove(); } });
+          }
+        }
+        if (cmds.length){
+          perform(compositeCommand(cmds, 'Change page settings'));
+          toast('Page settings updated.');
+        }
+      } }
+    ]
+  });
+}
+
+/* ---------------- edit / preview mode ---------------- */
+$('#modeEdit').addEventListener('click', () => setMode('edit'));
+$('#modePreview').addEventListener('click', () => setMode('preview'));
+function setMode(mode, force){
+  if (App.mode === mode && !force) return;
+  if (mode === 'preview'){ endTextEdit(true); deselect(); toggleFindBar(false); }
+  App.mode = mode;
+  $('#modeEdit').classList.toggle('on', mode === 'edit');
+  $('#modePreview').classList.toggle('on', mode === 'preview');
+  $('#deviceToggle').hidden = mode !== 'preview';
+  if (mode === 'edit') setDevice('desktop');
+  overlay.style.display = mode === 'edit' ? '' : 'none';
+  if (App.idoc) injectRuntimeStyle();
+  if (mode === 'preview') toastOnce('previewmode', 'Preview: the page behaves exactly as your customer will see it.');
+  renderPanel();
+}
+$('#devDesktop').addEventListener('click', () => setDevice('desktop'));
+$('#devMobile').addEventListener('click', () => setDevice('mobile'));
+function setDevice(dev){
+  App.device = dev;
+  $('#devDesktop').classList.toggle('on', dev === 'desktop');
+  $('#devMobile').classList.toggle('on', dev === 'mobile');
+  $('#stageInner').classList.toggle('mobile', dev === 'mobile');
+}
+
+/* ---------------- keyboard shortcuts ---------------- */
+function handleShortcut(e, fromFrame){
+  const mod = e.ctrlKey || e.metaKey;
+  const inEditorInput = !fromFrame && /^(INPUT|TEXTAREA|SELECT)$/.test((e.target.tagName || ''));
+  if (mod && e.key.toLowerCase() === 's'){
+    e.preventDefault();
+    saveFile();
+    return;
+  }
+  if (mod && e.shiftKey && e.key.toLowerCase() === 'v'){ App.richPasteUntil = Date.now() + 800; return; }
+  if (mod && e.key.toLowerCase() === 'z'){
+    // while typing, the browser's own undo handles the text; our stack takes over between sessions
+    if (fromFrame && App.editingEl) return;
+    if (inEditorInput) return;
+    e.preventDefault();
+    e.shiftKey ? redo() : undo();
+    return;
+  }
+  if (mod && e.key.toLowerCase() === 'y'){
+    if (fromFrame && App.editingEl) return;
+    if (inEditorInput) return;
+    e.preventDefault(); redo(); return;
+  }
+  if (mod && e.key.toLowerCase() === 'f' && App.idoc){
+    e.preventDefault(); toggleFindBar(true); return;
+  }
+  if (e.key === 'Escape'){
+    if (!$('#modalRoot').hidden){ return; }
+    if (!linkPop.hidden){ hideLinkPop(); return; }
+    if (App.editingEl){ endTextEdit(true); return; }
+    if (!$('#findBar').hidden){ toggleFindBar(false); return; }
+    if (App.selected){ deselect(); return; }
+    return;
+  }
+  if ((e.key === 'Delete' || e.key === 'Backspace') && App.selected && !App.editingEl && App.mode === 'edit' && !inEditorInput){
+    e.preventDefault(); deleteSelected(); return;
+  }
+  if (e.key === '?' && !App.editingEl && !inEditorInput){
+    showCheatSheet(); return;
+  }
+  if (!fromFrame) return;
+  // formatting shortcuts inside a text session are handled natively by the browser
+}
+document.addEventListener('keydown', e => handleShortcut(e, false));
+
+/* ---------------- autosave drafts (localStorage) ---------------- */
+function draftKey(){ return 'msed:draft:' + (App.fileName || ''); }
+let draftWarned = false;
+setInterval(() => {
+  if (!App.dirty || !App.idoc || App.loading) return;
+  try {
+    const html = buildExportHTML(false); // don't interrupt typing
+    if (html) localStorage.setItem(draftKey(), JSON.stringify({ t: Date.now(), html }));
+  } catch(_e){
+    if (!draftWarned){
+      draftWarned = true;
+      toast('Draft backup is off — this page is too large for browser storage. Remember to Save your work.', { kind: 'warn', duration: 6000 });
+    }
+  }
+}, 15000);
+function clearDraft(){ try { localStorage.removeItem(draftKey()); } catch(_e){} }
+function checkDraft(){
+  let d = null;
+  try { d = JSON.parse(localStorage.getItem(draftKey()) || 'null'); } catch(_e){}
+  if (!d || !d.html) return;
+  const when = new Date(d.t).toLocaleString([], { weekday: 'short', hour: '2-digit', minute: '2-digit' });
+  toast('You have unsaved edits to this file from ' + when + '.', {
+    duration: 15000,
+    action: { label: 'Restore them', fn: () => loadHTML(d.html, App.fileName) }
+  });
+}
+
+/* ---------------- heavy-script warning ---------------- */
+function heavyScriptCheck(){
+  try {
+    const staticDoc = new DOMParser().parseFromString(App.originalText, 'text/html');
+    const sLen = (staticDoc.body ? staticDoc.body.textContent : '').replace(/\s+/g, ' ').length;
+    const lLen = (App.idoc.body ? App.idoc.body.textContent : '').replace(/\s+/g, ' ').length;
+    if (lLen > 300 && sLen < lLen * 0.5){
+      toast('Heads-up: much of this page is generated by its own scripts. Edits are saved to the rendered result, so double-check the saved file in Preview.', { kind: 'warn', duration: 9000 });
+    }
+  } catch(_e){}
+}
+
+/* ---------------- first-run tips & cheat sheet ---------------- */
+function showFirstRunTips(){
+  let seen = false;
+  try { seen = !!localStorage.getItem('msed:tips'); } catch(_e){}
+  if (seen) return;
+  const tips = h('div', { class: 'tip-list' },
+    h('div', { class: 'tip' }, h('span', { class: 'ti', html: icon('pencil') }),
+      h('div', null, h('b', null, 'Click any text to edit it'), h('span', null, 'A toolbar appears for bold, colour, size and links. Click a picture to swap it.'))),
+    h('div', { class: 'tip' }, h('span', { class: 'ti', html: icon('drag') }),
+      h('div', null, h('b', null, 'Drag sections to reorder'), h('span', null, 'Select something, then use the dotted handle to drag it — or the ↑ ↓ arrows.'))),
+    h('div', { class: 'tip' }, h('span', { class: 'ti', html: icon('undo') }),
+      h('div', null, h('b', null, 'Undo anything'), h('span', null, 'Ctrl+Z (⌘Z on Mac) reverses any change. Nothing is ever lost without undo.'))),
+    h('div', { class: 'tip' }, h('span', { class: 'ti', html: icon('save') }),
+      h('div', null, h('b', null, 'Save when you’re done'), h('span', null, 'You’ll get a fresh copy like “yourfile-v2.html” — the original stays untouched.'))));
+  showModal({
+    title: 'Welcome! Three things to know', body: tips,
+    buttons: [{ label: 'Got it', primary: true, fn(){ try { localStorage.setItem('msed:tips', '1'); } catch(_e){} } }],
+    onclose(){ try { localStorage.setItem('msed:tips', '1'); } catch(_e){} }
+  });
+}
+$('#btnHelp').addEventListener('click', showCheatSheet);
+function showCheatSheet(){
+  const rows = [
+    ['Save a copy', 'Ctrl+S'],
+    ['Undo / Redo', 'Ctrl+Z / Ctrl+Shift+Z'],
+    ['Find & replace', 'Ctrl+F'],
+    ['Deselect / stop editing', 'Esc'],
+    ['Delete the selected item', 'Delete'],
+    ['Paste as plain text', 'Ctrl+V'],
+    ['Paste with formatting', 'Ctrl+Shift+V'],
+    ['Bold / Italic / Underline', 'Ctrl+B / I / U'],
+    ['Edit a button or tab label', 'Double-click it'],
+    ['This cheat sheet', '?'],
+  ];
+  const table = h('table', { class: 'kbd-table' });
+  rows.forEach(([what, keys]) => {
+    table.appendChild(h('tr', null, h('td', null, what),
+      h('td', { html: keys.split(' / ').map(k => '<kbd>' + esc(k) + '</kbd>').join(' / ') })));
+  });
+  showModal({ title: 'Keyboard shortcuts', body: table, buttons: [{ label: 'Close', primary: true }] });
+}
+
+/* ---------------- test hook ----------------
+   Used by the automated round-trip test (see TESTING.md and
+   test/roundtrip.test.mjs). Not part of the seller-facing UI. */
+window.__msedTest = {
+  load(html, name){ loadHTML(html, name || 'test.html'); },
+  ready(){ return !!(App.idoc && App.idoc.body) && !App.loading; },
+  export(){ return buildExportHTML(true); },
+  suggestFileName,
+  state: App,
+};
+</script>
+</body>
+</html>

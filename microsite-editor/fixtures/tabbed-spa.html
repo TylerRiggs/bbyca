@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Contoso Platform — Deep Dive</title>
+<style>
+  body { margin: 0; font-family: "Segoe UI", Arial, sans-serif; color: #1b1f27; }
+  .top { background: #16a34a; color: #fff; padding: 40px 24px; }
+  .top h1 { margin: 0 0 6px; font-size: 30px; }
+  .top p { margin: 0; opacity: .9; }
+  .tabbar { display: flex; gap: 4px; background: #f1f5f2; padding: 8px 16px 0; border-bottom: 2px solid #d5e2d8; }
+  .tabbar button { border: none; background: transparent; padding: 12px 20px; font-size: 15px; font-weight: 600; color: #4b5563; cursor: pointer; border-radius: 8px 8px 0 0; }
+  .tabbar button.active { background: #fff; color: #16a34a; box-shadow: 0 -2px 6px rgba(0,0,0,.06); }
+  .panel { display: none; padding: 36px 24px; max-width: 780px; margin: 0 auto; line-height: 1.65; }
+  .panel.active { display: block; }
+  .panel h2 { color: #16a34a; }
+  .metric { display: inline-block; background: #ecfdf3; border: 1px solid #bbe7c9; border-radius: 10px; padding: 14px 22px; margin: 8px 8px 8px 0; }
+  .metric b { display: block; font-size: 26px; color: #15803d; }
+  details { border: 1px solid #d5e2d8; border-radius: 8px; padding: 12px 16px; margin-bottom: 10px; }
+  summary { font-weight: 600; cursor: pointer; }
+</style>
+</head>
+<body>
+<div class="top">
+  <h1>Contoso Platform, explained</h1>
+  <p>A guided tour for the Tailspin evaluation team.</p>
+</div>
+
+<div class="tabbar" role="tablist" aria-label="Sections">
+  <button role="tab" class="active" aria-selected="true" aria-controls="panel-overview" data-tab="panel-overview">Overview</button>
+  <button role="tab" aria-selected="false" aria-controls="panel-security" data-tab="panel-security">Security</button>
+  <button role="tab" aria-selected="false" aria-controls="panel-pricing" data-tab="panel-pricing">Pricing</button>
+  <button role="tab" aria-selected="false" aria-controls="panel-faq" data-tab="panel-faq">FAQ</button>
+</div>
+
+<section id="panel-overview" class="panel active" role="tabpanel">
+  <h2>One platform, three products</h2>
+  <p>Contoso brings ingestion, modelling and activation together. Teams ship their first use case in under two weeks.</p>
+  <div class="metric"><b>2 weeks</b>to first value</div>
+  <div class="metric"><b>99.95%</b>uptime SLA</div>
+  <div class="metric"><b>40+</b>native connectors</div>
+</section>
+
+<section id="panel-security" class="panel" role="tabpanel">
+  <h2>Security &amp; compliance</h2>
+  <p>SOC 2 Type II, ISO 27001 and GDPR-ready. Data is encrypted in transit and at rest, with region pinning available on every plan.</p>
+  <details>
+    <summary>Where is my data stored?</summary>
+    <p>In the region you choose at onboarding — US, EU or APAC. It never leaves that region.</p>
+  </details>
+  <details>
+    <summary>Do you support SSO?</summary>
+    <p>Yes — SAML 2.0 and OIDC are included on all plans, no “SSO tax”.</p>
+  </details>
+</section>
+
+<section id="panel-pricing" class="panel" role="tabpanel">
+  <h2>Simple, usage-based pricing</h2>
+  <p>Start free. Pay only for rows processed after the first million. Enterprise plans include a dedicated success manager.</p>
+</section>
+
+<section id="panel-faq" class="panel" role="tabpanel">
+  <h2>Frequently asked questions</h2>
+  <details>
+    <summary>How long does migration take?</summary>
+    <p>Most teams run Contoso in parallel for two weeks, then cut over in an afternoon.</p>
+  </details>
+  <details>
+    <summary>Can we keep our current warehouse?</summary>
+    <p>Yes — Contoso sits on top of Snowflake, BigQuery or Redshift. Nothing moves unless you want it to.</p>
+  </details>
+</section>
+
+<script>
+  // Simple tab switcher. State (the .active classes) is set in the
+  // markup, so loading the page runs no DOM mutations until a user
+  // clicks a tab — this keeps the file byte-stable through tools.
+  document.querySelectorAll('.tabbar [role="tab"]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      document.querySelectorAll('.tabbar [role="tab"]').forEach(function (b) {
+        b.classList.toggle('active', b === btn);
+        b.setAttribute('aria-selected', b === btn ? 'true' : 'false');
+      });
+      document.querySelectorAll('.panel').forEach(function (p) {
+        p.classList.toggle('active', p.id === btn.getAttribute('data-tab'));
+      });
+    });
+  });
+</script>
+</body>
+</html>
