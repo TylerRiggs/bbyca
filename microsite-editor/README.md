@@ -28,15 +28,30 @@ install, no server, no build step.
      colours and spacing — or drag it with the dotted handle to reorder.
    - The dark toolbar on every selection has **move up/down, duplicate,
      hide and delete**. Everything is undoable with `Ctrl+Z`.
+   - **Tables**: click a cell to edit its text, and use the Table panel to
+     add or remove rows and columns.
+   - **Add content** includes a **Video** block — paste a YouTube, Vimeo,
+     Loom or .mp4 link.
+   - **My library**: save any section for reuse ("our security blurb",
+     "standard footer") and drop it into any microsite you open later.
    - **Find** (`Ctrl+F`) finds and replaces text across the whole page —
      including inside every tab and the browser-tab title. Great for
      swapping customer names.
    - **Tabs** in the top bar lists the page's tabs so you can jump to,
      rename or reorder them.
-   - **Page** edits the page title, description and icon.
+   - **Links** in the top bar shows every link on the page in one list so
+     you can check and fix them all at once (dead `#` links are flagged).
+   - **Pages** appears for zips with more than one page — switch between
+     them; edits on every page go into the saved zip.
+   - **Page** edits the page title, description and icon, shows a summary
+     of everything you've changed (copy it for Claude or a teammate), and
+     holds this session's saved versions.
 3. **Preview** — the toggle in the top bar shows the page exactly as your
    customer will see it (with a phone-width option).
-4. **Save** — click **Save** (or `Ctrl+S`). You get a new file like
+4. **Save** — click **Save** (or `Ctrl+S`). Before downloading, the editor
+   runs a quick check for things that are easy to miss — leftover
+   placeholder text, links that go nowhere, placeholder images — and shows
+   you anything it finds (nothing blocks saving). You get a new file like
    `yourfile-v2.html` (or `yourfile-v2.zip`); the original is never touched.
    Send that file to the customer, host it, or hand it back to Claude for
    bigger changes.
@@ -83,14 +98,40 @@ Everything lives in `editor.html` (vanilla JS, no dependencies, no network).
   and is disabled when buttons/panels don't share parents.
 - **Zipped sites**: `.zip` inputs are unpacked entirely in memory by a
   vanilla zip reader (stored entries + deflate via the browser-native
-  `DecompressionStream`). The main HTML page (preferring `index.html`) is
-  rewritten so relative references — `src`/`href`/`srcset`, inline
-  `style="url(…)"`, `<style>` blocks, and `url()`/`@import` inside `.css`
-  files (resolved relative to each stylesheet, with circular-import
-  protection) — point at blob URLs; the iframe renders those. On export the
-  substitution is reversed string-for-string (blob URLs are globally
-  unique), and Save rebuilds the zip (stored entries) with the updated HTML
-  while all other files stay byte-for-byte identical.
+  `DecompressionStream`). The active HTML page is rewritten so relative
+  references — `src`/`href`/`srcset`, inline `style="url(…)"`, `<style>`
+  blocks, and `url()`/`@import` inside `.css` files (resolved relative to
+  each stylesheet, with circular-import protection) — point at blob URLs;
+  the iframe renders those. On export the substitution is reversed
+  string-for-string (blob URLs are globally unique), and Save rebuilds the
+  zip (stored entries) with each edited page's updated HTML while all other
+  files stay byte-for-byte identical.
+- **Multi-page zips**: every `.html` entry is editable via the Pages menu
+  (`switchZipPage`). Switching pages parks the current page's exported HTML
+  in `App.zipPages`; Save and version snapshots merge all visited pages.
+  Links between the zip's pages open the target page in Preview mode (and
+  point at the Pages menu in Edit mode). Undo history is per page — it
+  resets on switch, though intra-page undo remains command-based.
+- **Pre-flight check** (`runPreflight`): runs on every save; flags likely
+  placeholder text (lorem/TODO/`[Customer …]` plus this editor's own
+  insert-block defaults), placeholder images, dead links (`#`/empty/
+  `javascript:void(0)`), missing alt text, and hidden elements — each with
+  a "Show me" jump that reveals the element (activating its tab if
+  needed). Purely advisory; "Save anyway" is always available.
+- **Change summary**: because undo is command-based, every command carries
+  a human-readable label ("Edit heading — \"…\"", "Replace image — x.png").
+  `changeSummary()` collapses the live undo stack into a plain-English list
+  the seller can copy (from the Page settings modal or the post-save toast)
+  and paste into Claude as context for further AI edits.
+- **Snippet library**: stored in `localStorage` (`msed:snippets`, capped at
+  30). Snippets are captured with editor markers stripped and (for zips)
+  blob URLs reversed to relative paths; on insert, ids are removed and, in
+  zip mode, asset references are re-resolved against the current zip.
+- **Video blocks**: `parseVideoUrl` maps YouTube/Vimeo/Loom share links to
+  their embed URLs, direct media files to `<video>`, and any other https
+  URL to a plain iframe embed. In Edit mode all iframes/videos get
+  `pointer-events:none` (via the injected style) so embeds are selectable
+  rather than swallowing clicks; Preview restores full interactivity.
 
 ### How export cleanup works
 
@@ -131,12 +172,18 @@ end-to-end).
   (e.g. inactive tab panels), so they can't be un-hidden in a later session.
 - Draft autosave uses `localStorage` and silently degrades (with one
   warning) for very large files that exceed the storage quota.
-- Zipped sites: only the main page is editable — other `.html` pages in the
-  zip pass through unchanged (a toast says which page was opened). Draft
-  autosave is off in zip mode (assets only live in memory, so a draft
-  restored in a fresh session couldn't rebuild the zip). Assets referenced
+- Zipped sites: draft autosave is off in zip mode (assets only live in
+  memory, so a draft restored in a fresh session couldn't rebuild the
+  zip), and undo history resets when switching pages. Assets referenced
   only from JavaScript at runtime (e.g. `fetch('data.json')`) aren't
   rewritten and won't load in the canvas, though they're preserved in the
   saved zip. A replaced image is embedded as a data URI; the original asset
   file stays in the zip unused. Zip64 archives (>4 GB / >65k entries) are
   not supported.
+- Tables with merged cells (colspan/rowspan) allow text editing only — the
+  row/column tools are disabled there by design.
+- Library snippets store asset references as relative paths; a snippet
+  saved from one zip won't carry its images into a different site (images
+  embedded as data URIs travel fine).
+- The change summary reflects the current page's session (it resets when
+  a zip page is switched or a file is reloaded).

@@ -369,6 +369,8 @@ kbd{
   <span class="tb-sep"></span>
   <button class="btn" id="btnFind" title="Find and replace (Ctrl+F)" disabled><span class="i" data-icon="search"></span>Find</button>
   <button class="btn" id="btnTabs" title="Manage the tabs on this page" hidden><span class="i" data-icon="tabs"></span>Tabs</button>
+  <button class="btn" id="btnLinks" title="See and fix every link on this page" disabled><span class="i" data-icon="link"></span>Links</button>
+  <button class="btn" id="btnPages" title="Switch between the pages in this zip" hidden><span class="i" data-icon="doc"></span>Pages</button>
   <button class="btn" id="btnPage" title="Page title, description and icon" disabled><span class="i" data-icon="gear"></span>Page</button>
   <span class="tb-spacer"></span>
   <div class="seg" id="deviceToggle" hidden>
@@ -536,6 +538,7 @@ const ICONS = {
   plus:'<path d="M12 5v14M5 12h14"/>',
   check:'<path d="M20 6 9 17l-5-5"/>',
   go:'<path d="M5 12h14M13 6l6 6-6 6"/>',
+  video:'<rect x="2" y="4" width="20" height="16" rx="3"/><path d="m10 9 5 3-5 3z"/>',
   aminus:'<path d="M4 20 11 4h1l7 16M6.5 15h10"/><path d="M20 7h-5" transform="translate(1,-2)"/>',
 };
 function icon(name, size){
@@ -678,6 +681,7 @@ function readMicrositeFile(file){
 App.zipMode = false;
 App.htmlDir = '';
 App.zip = { entries: null, htmlPath: '' };
+App.zipPages = new Map();     // page path -> its current edited HTML (relative paths)
 App.blobToPath = new Map();   // blob URL -> path inside the zip
 let _rawUrlCache = new Map(); // asset path -> raw blob URL
 let _cssUrlCache = new Map(); // css path -> rewritten-css blob URL
@@ -690,7 +694,12 @@ function clearZipState(){
   App.blobToPath = new Map();
   App.zipMode = false;
   App.zip = { entries: null, htmlPath: '' };
+  App.zipPages = new Map();
   App.htmlDir = '';
+  $('#btnPages').hidden = true;
+}
+function zipHtmlPages(){
+  return App.zip.entries ? Array.from(App.zip.entries.keys()).filter(p => /\.html?$/i.test(p)) : [];
 }
 
 const _crcTable = (() => {
@@ -842,7 +851,9 @@ function cssUrlFor(path, stack){
 function assetUrlFor(baseDir, ref, stack){
   if (!App.zip.entries) return null;
   const path = resolveZipPath(baseDir, ref);
-  if (!path || path === App.zip.htmlPath || !App.zip.entries.has(path)) return null;
+  // HTML pages are never turned into blob URLs — links between the
+  // zip's pages stay as relative paths (the Pages menu handles them)
+  if (!path || /\.html?$/i.test(path) || !App.zip.entries.has(path)) return null;
   return /\.css$/i.test(path) ? cssUrlFor(path, stack || []) : rawUrlFor(path);
 }
 function rewriteCssUrls(text, baseDir, stack){
@@ -916,8 +927,46 @@ async function openZipBuffer(buf, name){
   const raw = new TextDecoder().decode(entries.get(main));
   loadHTML(rewriteSiteHtml(raw), name);
   if (htmls.length > 1){
-    toast('This zip has ' + htmls.length + ' pages — editing “' + main + '”. The other pages are kept unchanged when you save.', { duration: 8000 });
+    toast('This zip has ' + htmls.length + ' pages — starting with “' + main + '”. Use the Pages button (top bar) to edit the others.', { duration: 8000 });
   }
+}
+function zipPageFor(a){
+  if (!App.zipMode || !a) return null;
+  const p = resolveZipPath(App.htmlDir, a.getAttribute('href'));
+  return p && /\.html?$/i.test(p) && App.zip.entries.has(p) ? p : null;
+}
+function switchZipPage(path){
+  if (!App.zipMode || path === App.zip.htmlPath || !App.zip.entries.has(path)) return;
+  endTextEdit(true);
+  deselect();
+  const wasDirty = App.dirty;
+  // park the current page's state so its edits survive the switch
+  App.zipPages.set(App.zip.htmlPath, buildExportHTML(true));
+  App.zip.htmlPath = path;
+  App.htmlDir = path.includes('/') ? path.slice(0, path.lastIndexOf('/') + 1) : '';
+  const src = App.zipPages.get(path) || new TextDecoder().decode(App.zip.entries.get(path));
+  loadHTML(rewriteSiteHtml(src), App.fileName);
+  if (wasDirty) markDirty();
+  toast('Now editing “' + path + '”.', { duration: 2400 });
+}
+$('#btnPages').addEventListener('click', showPagesModal);
+function showPagesModal(){
+  const body = h('div');
+  zipHtmlPages().sort().forEach(p => {
+    const cur = p === App.zip.htmlPath;
+    const row = h('div', { class: 'hist-row' },
+      h('b', null, p),
+      h('span', null, cur ? 'Editing now' : (App.zipPages.has(p) ? 'Edited' : '')));
+    if (!cur){
+      const b = h('button', { class: 'pbtn' }, 'Open');
+      b.addEventListener('click', () => { closeFn(); switchZipPage(p); });
+      row.appendChild(b);
+    }
+    body.appendChild(row);
+  });
+  body.appendChild(h('p', { class: 'hint', style: 'margin-top:8px' },
+    'Edits on every page are kept and go into the saved zip. Undo works within the page you’re currently on.'));
+  const closeFn = showModal({ title: 'Pages in this zip', body, wide: true, buttons: [{ label: 'Done', primary: true }] });
 }
 
 /* ---------------- load / render ---------------- */
@@ -956,7 +1005,8 @@ function loadHTML(text, name){
   $('#dropzone').hidden = true;
   $('#fileMeta').hidden = false;
   $('#fileNameLabel').textContent = App.fileName;
-  ['#btnSave', '#btnFind', '#btnPage'].forEach(s => $(s).disabled = false);
+  ['#btnSave', '#btnFind', '#btnPage', '#btnLinks'].forEach(s => $(s).disabled = false);
+  $('#btnPages').hidden = !(App.zipMode && zipHtmlPages().length > 1);
   refreshUndoButtons();
   markClean();
 }
@@ -991,6 +1041,9 @@ function runtimeCSS(){
     // hidden elements stay visible-but-ghosted in Edit mode so they can be re-shown
     '[data-msed-hidden]{opacity:.35 !important;outline:2px dashed #9ca3af !important;outline-offset:-2px;}',
     '[data-msed-ce]{outline:none !important;cursor:text;caret-color:#4f46e5;min-height:1em;}',
+    // embedded players swallow mouse events; in Edit mode they must be
+    // selectable, not playable (Preview restores full interactivity)
+    'iframe, video{pointer-events:none !important;}',
     'html{scroll-behavior:auto !important;}'
   ].join('\n');
 }
@@ -1040,13 +1093,19 @@ function suggestFileName(name){
 }
 function saveFile(){
   if (!App.idoc) return;
+  const issues = runPreflight();
+  if (issues.length){ showPreflightModal(issues); return; }
+  doSave();
+}
+function doSave(){
   const html = buildExportHTML(true);
   if (html === null){ toast('Nothing to save yet.', { kind: 'warn' }); return; }
   const outName = suggestFileName(App.fileName);
   let blob;
   if (App.zipMode){
-    // rebuild the zip: updated HTML page, every other file untouched
+    // rebuild the zip: every edited page's HTML, every other file untouched
     const files = new Map(App.zip.entries);
+    App.zipPages.forEach((pHtml, p) => files.set(p, new TextEncoder().encode(pHtml)));
     files.set(App.zip.htmlPath, new TextEncoder().encode(html));
     blob = buildZip(files);
   } else {
@@ -1056,13 +1115,147 @@ function saveFile(){
   const a = h('a', { href: url, download: outName });
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 4000);
-  App.saves.push({ t: Date.now(), name: outName, html });
+  const snap = { t: Date.now(), name: outName, html, page: App.zip.htmlPath };
+  if (App.zipMode) snap.pages = Object.fromEntries(new Map(App.zipPages).set(App.zip.htmlPath, html));
+  App.saves.push(snap);
   if (App.saves.length > 20) App.saves.shift();
   clearDraft();
   markClean();
-  toast('Saved as “' + outName + '” — check your downloads.');
+  toast('Saved as “' + outName + '” — check your downloads.', { action: { label: 'Copy summary', fn: copyChangeSummary } });
 }
 $('#btnSave').addEventListener('click', saveFile);
+
+/* ---------------- pre-flight check ----------------
+   Runs before every save: catches the embarrassing stuff — leftover
+   placeholder text, dead links, placeholder images — without ever
+   blocking the save. */
+const PREFLIGHT_RX = /lorem ipsum|\bTODO\b|\bTBD\b|\bFIXME\b|\[(?:customer|client|company|name|logo|date|insert|product)[^\]]*\]/i;
+const PREFLIGHT_DEFAULTS = ['New heading', 'New paragraph. Click it to start writing.', 'Write something here.', 'Column 1 heading', 'Column 2 heading'];
+function runPreflight(){
+  const doc = App.idoc, issues = [];
+  if (!doc || !doc.body) return issues;
+  const seen = new Set();
+  for (const node of textNodesUnder(doc.body)){
+    if (issues.length > 14) break;
+    const v = node.nodeValue.trim();
+    const el = node.parentElement;
+    if (!v || !el || seen.has(el)) continue;
+    if (PREFLIGHT_RX.test(v) || PREFLIGHT_DEFAULTS.includes(v)){
+      seen.add(el);
+      issues.push({ icon: '⚠️', text: 'Possible placeholder text: “' + v.slice(0, 46) + (v.length > 46 ? '…' : '') + '”', el });
+    }
+  }
+  doc.body.querySelectorAll('img').forEach(img => {
+    if (issues.length > 20) return;
+    if (img.getAttribute('src') === PLACEHOLDER_IMG){
+      issues.push({ icon: '⚠️', text: 'An image is still the grey “click to replace” placeholder.', el: img });
+    }
+  });
+  doc.body.querySelectorAll('a[href]').forEach(a => {
+    if (issues.length > 24) return;
+    const href = (a.getAttribute('href') || '').trim();
+    if (href === '#' || href === '' || /^javascript:(void\(0\);?|;)?$/i.test(href)){
+      issues.push({ icon: '⚠️', text: 'The link “' + (a.textContent.trim().slice(0, 28) || 'image link') + '” doesn’t go anywhere yet.', el: a });
+    }
+  });
+  const noAlt = Array.from(doc.body.querySelectorAll('img')).filter(i => !i.getAttribute('alt'));
+  if (noAlt.length){
+    issues.push({ icon: 'ℹ️', text: noAlt.length + ' image' + (noAlt.length > 1 ? 's have' : ' has') + ' no description — worth adding for accessibility.', el: noAlt[0] });
+  }
+  const hidden = doc.body.querySelectorAll('[data-msed-hidden]').length;
+  if (hidden){
+    issues.push({ icon: 'ℹ️', text: hidden + ' hidden item' + (hidden > 1 ? 's' : '') + ' will stay invisible to viewers of the saved file.' });
+  }
+  return issues;
+}
+function showPreflightModal(issues){
+  const body = h('div');
+  issues.forEach(it => {
+    const row = h('div', { class: 'hist-row' },
+      h('span', { style: 'flex:0 0 auto' }, it.icon),
+      h('span', { style: 'flex:1;color:var(--text)' }, it.text));
+    if (it.el){
+      const go = h('button', { class: 'pbtn', style: 'flex:0 0 auto' }, 'Show me');
+      go.addEventListener('click', () => { closeFn(); goToElement(it.el); });
+      row.appendChild(go);
+    }
+    body.appendChild(row);
+  });
+  body.appendChild(h('p', { class: 'hint', style: 'margin-top:10px' }, 'Nothing here blocks saving — these are just easy things to miss.'));
+  const closeFn = showModal({
+    title: 'Worth a quick look before you save', body, wide: true,
+    buttons: [ { label: 'Keep editing' }, { label: 'Save anyway', primary: true, fn(){ doSave(); } } ]
+  });
+}
+function goToElement(el){
+  if (!el || !el.isConnected) return;
+  setMode('edit');
+  if (el.getBoundingClientRect().width === 0){
+    // probably inside a non-active tab — switch to it first
+    for (const g of App.tabGroups) for (const t of g.tabs){
+      if (t.panel && t.panel.contains(el)) t.btn.click();
+    }
+  }
+  selectEl(el);
+  el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+}
+
+/* ---------------- link audit ---------------- */
+$('#btnLinks').addEventListener('click', showLinksModal);
+function showLinksModal(){
+  if (!App.idoc) return;
+  const links = Array.from(App.idoc.body.querySelectorAll('a[href]')).slice(0, 200);
+  if (!links.length){ toast('There are no links on this page.'); return; }
+  const body = h('div');
+  links.forEach(a => {
+    const raw = a.getAttribute('href') || '';
+    const label = a.textContent.trim().replace(/\s+/g, ' ').slice(0, 24) || (a.querySelector('img') ? '(image link)' : '(link)');
+    const dead = raw.trim() === '#' || raw.trim() === '';
+    const inp = h('input', { type: 'text', value: raw, title: 'Where this link goes — edit it right here' });
+    inp.addEventListener('change', () => attrCommand(a, 'href', inp.value.trim(), 'Change link address'));
+    const nt = h('input', { type: 'checkbox' });
+    nt.checked = a.getAttribute('target') === '_blank';
+    nt.addEventListener('change', () => attrCommand(a, 'target', nt.checked ? '_blank' : null, 'Change link'));
+    const go = h('button', { class: 'btn', title: 'Show this link on the page', html: icon('go') });
+    go.addEventListener('click', () => { closeFn(); goToElement(a); });
+    body.appendChild(h('div', { class: 'tab-row' },
+      h('span', { style: 'flex:0 0 128px;font-weight:600;font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap' }, (dead ? '⚠️ ' : '') + label),
+      inp,
+      h('label', { style: 'display:flex;align-items:center;gap:4px;font-size:11px;color:var(--muted);cursor:pointer;flex:0 0 auto' }, nt, 'new tab'),
+      go));
+  });
+  const closeFn = showModal({ title: 'Links on this page', body, wide: true, buttons: [{ label: 'Done', primary: true }] });
+}
+
+/* ---------------- change summary (for the Claude round-trip) ---------------- */
+function changeSummary(){
+  const labels = App.undoStack.map(c => c.label || 'Small change');
+  const lines = [];
+  let last = null, n = 0;
+  for (const l of labels){
+    if (l === last) n++;
+    else { if (last !== null) lines.push(last + (n > 1 ? ' (×' + n + ')' : '')); last = l; n = 1; }
+  }
+  if (last !== null) lines.push(last + (n > 1 ? ' (×' + n + ')' : ''));
+  return lines;
+}
+function copyChangeSummary(){
+  const lines = changeSummary();
+  if (!lines.length){ toast('No changes recorded in this session yet.'); return; }
+  const text = 'Changes made to ' + App.fileName +
+    (App.zipMode ? ' (page: ' + App.zip.htmlPath + ')' : '') + ':\n' +
+    lines.map(l => '- ' + l).join('\n');
+  const fallback = () => {
+    const ta = h('textarea', { style: 'width:100%;height:180px;font-size:12.5px;padding:8px;border:1px solid var(--border);border-radius:8px' }, text);
+    showModal({ title: 'Change summary', body: h('div', null, ta, h('p', { class: 'hint', style: 'margin-top:8px' }, 'Copy this and paste it to Claude or a teammate.')), buttons: [{ label: 'Close', primary: true }] });
+    ta.select();
+  };
+  if (navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(text).then(
+      () => toast('Change summary copied — paste it to Claude or a teammate.'),
+      fallback);
+  } else fallback();
+}
 
 function markDirty(){
   App.dirty = true;
@@ -1095,6 +1288,7 @@ function friendlyName(el){
   if (!el || !el.tagName) return 'Element';
   const tag = el.tagName.toUpperCase();
   if (tag === 'DIV' || tag === 'SECTION' || tag === 'ARTICLE'){
+    if (el.children.length === 1 && /^(IFRAME|VIDEO)$/i.test(el.children[0].tagName)) return 'Video';
     if (el.parentElement === App.idoc.body) return 'Section';
     if (tag !== 'DIV') return NAME_MAP[tag];
     const cs = App.iwin.getComputedStyle(el);
@@ -1386,9 +1580,13 @@ function onFrameClick(e){
   if (App.mode === 'preview'){
     // keep the customer experience, but never let the page navigate the canvas away
     const a = e.target.closest && e.target.closest('a[href]');
-    if (a && isExternalLink(a)){
-      e.preventDefault();
-      window.open(a.href, '_blank', 'noopener');
+    if (a){
+      const zp = zipPageFor(a);
+      if (zp){ e.preventDefault(); switchZipPage(zp); return; }
+      if (isExternalLink(a)){
+        e.preventDefault();
+        window.open(a.href, '_blank', 'noopener');
+      }
     }
     return;
   }
@@ -1407,7 +1605,10 @@ function onFrameClick(e){
     // normal behaviour so tab navigation etc. still works; the user
     // edits it via the "Edit text" affordance or double-click.
     const a = target.closest && target.closest('a[href]');
-    if (a && isExternalLink(a)){
+    if (a && zipPageFor(a)){
+      e.preventDefault();
+      toastOnce('zippage', 'That links to another page in this zip — open it with the Pages button, or click it in Preview.');
+    } else if (a && isExternalLink(a)){
       e.preventDefault();
       toastOnce('extlink', 'Links don’t open while editing — switch to Preview to try them.');
     }
@@ -1518,8 +1719,9 @@ function deleteSelected(){
   const el = App.selected;
   if (!el) return;
   const name = friendlyName(el).toLowerCase();
+  const sn = (el.textContent || '').trim().replace(/\s+/g, ' ').slice(0, 28);
   deselect();
-  removeCommand(el, 'Delete ' + name);
+  removeCommand(el, 'Delete ' + name + (sn ? ' — “' + sn + (sn.length === 28 ? '…' : '') + '”' : ''));
   toast('Deleted the ' + name + '.', { action: { label: 'Undo', fn: undo }, duration: 6000 });
 }
 
@@ -1641,7 +1843,9 @@ function endTextEdit(commit){
   hideTextToolbar(); hideLinkPop();
   const after = el.innerHTML;
   if (commit && after !== App.editingBefore){
-    record(htmlCommand(el, App.editingBefore, after, 'Edit text'));
+    const sn = (el.textContent || '').trim().replace(/\s+/g, ' ').slice(0, 32);
+    record(htmlCommand(el, App.editingBefore, after,
+      'Edit ' + friendlyName(el).toLowerCase() + (sn ? ' — “' + sn + (sn.length === 32 ? '…' : '') + '”' : '')));
   } else if (!commit){
     el.innerHTML = App.editingBefore;
   }
@@ -1862,10 +2066,12 @@ function renderPanel(){
   body.appendChild(buildCrumbs(el));
   if (el.tagName === 'IMG') body.appendChild(imagePanel(el));
   if (el.tagName === 'A' || el.tagName === 'BUTTON') body.appendChild(buttonPanel(el));
+  if (el.closest && el.closest('table')) body.appendChild(tablePanel(el));
   const isContainer = CONTAINER_TAGS.has(el.tagName);
   const hasBg = App.iwin.getComputedStyle(el).backgroundImage !== 'none';
   if (isContainer || hasBg) body.appendChild(sectionPanel(el, hasBg));
   body.appendChild(addBlockPanel(el));
+  body.appendChild(libraryPanel(el));
 }
 function buildCrumbs(el){
   const wrap = h('div', { class: 'crumbs' });
@@ -1967,9 +2173,8 @@ function pickImage(cb){
 }
 function replaceImage(img, file){
   fileToDataURI(file, uri => {
-    const cmds = [];
     const before = { src: img.getAttribute('src'), srcset: img.getAttribute('srcset'), sizes: img.getAttribute('sizes') };
-    perform({ label: 'Replace image',
+    perform({ label: 'Replace image — ' + file.name,
       redo(){ img.setAttribute('src', uri); img.removeAttribute('srcset'); img.removeAttribute('sizes'); },
       undo(){
         if (before.src === null) img.removeAttribute('src'); else img.setAttribute('src', before.src);
@@ -2215,6 +2420,7 @@ function blockFactories(refEl){
       }
       return wrap;
     } },
+    video: { label: 'Video', ic: 'video', special: 'video' },
   };
 }
 function addBlockPanel(el){
@@ -2224,6 +2430,7 @@ function addBlockPanel(el){
     const f = factories[key];
     const b = h('button', { class: 'pbtn', html: icon(f.ic) + '<span>' + f.label + '</span>' });
     b.addEventListener('click', () => {
+      if (f.special === 'video'){ openVideoModal(el); return; }
       const node = f.make();
       insertCommand(node, el.parentNode, el.nextSibling, 'Add ' + f.label.toLowerCase());
       selectEl(node);
@@ -2233,6 +2440,238 @@ function addBlockPanel(el){
     grid.appendChild(b);
   }
   return sec('Add content below', grid);
+}
+
+/* ---------------- table structure editing ----------------
+   Row/column operations are only offered on tables without merged
+   cells (colspan/rowspan) — restructuring those safely isn't possible
+   without understanding the table's meaning, so we degrade to
+   text-only editing there. */
+function tablePanel(el){
+  const table = el.closest('table');
+  const cell = el.closest('td,th');
+  const s = sec('Table');
+  if (table.querySelector('[colspan],[rowspan]')){
+    s.appendChild(h('p', { class: 'hint' }, 'This table has merged cells, so rows and columns can’t be safely added or removed here — but every cell’s text is still editable.'));
+    return s;
+  }
+  if (!cell){
+    s.appendChild(h('p', { class: 'hint' }, 'Click a cell inside the table to add or remove rows and columns around it.'));
+    return s;
+  }
+  const grid = h('div', { class: 'blockgrid' });
+  const mk = (label, fn) => {
+    const b = h('button', { class: 'pbtn' }, label);
+    b.addEventListener('click', fn);
+    grid.appendChild(b);
+  };
+  mk('+ Row above', () => addTableRow(cell, false));
+  mk('+ Row below', () => addTableRow(cell, true));
+  mk('+ Column left', () => addTableColumn(cell, false));
+  mk('+ Column right', () => addTableColumn(cell, true));
+  const rowDel = h('button', { class: 'pbtn danger' }, 'Delete row');
+  rowDel.addEventListener('click', () => {
+    deselect();
+    removeCommand(cell.parentElement, 'Delete table row');
+    toast('Row deleted.', { action: { label: 'Undo', fn: undo }, duration: 5000 });
+  });
+  const colDel = h('button', { class: 'pbtn danger' }, 'Delete column');
+  colDel.addEventListener('click', () => deleteTableColumn(cell));
+  s.appendChild(grid);
+  s.appendChild(h('div', { class: 'btnrow', style: 'margin-top:6px' }, rowDel, colDel));
+  return s;
+}
+function newCellLike(ref){
+  const nc = App.idoc.createElement(ref.tagName.toLowerCase());
+  const cls = ref.getAttribute('class');
+  if (cls) nc.setAttribute('class', cls);
+  nc.innerHTML = '&nbsp;';
+  return nc;
+}
+function addTableRow(cell, below){
+  const tr = cell.parentElement;
+  const newTr = App.idoc.createElement('tr');
+  Array.from(tr.cells).forEach(c => newTr.appendChild(newCellLike(c)));
+  insertCommand(newTr, tr.parentNode, below ? tr.nextSibling : tr, 'Add table row');
+  selectEl(newTr.cells[cell.cellIndex] || newTr);
+}
+function addTableColumn(cell, right){
+  const table = cell.closest('table');
+  const idx = cell.cellIndex;
+  const cmds = [];
+  Array.from(table.rows).forEach(tr => {
+    const ref = tr.cells[Math.min(idx, tr.cells.length - 1)];
+    if (!ref) return;
+    const nc = newCellLike(ref);
+    cmds.push({
+      redo(){ tr.insertBefore(nc, right ? ref.nextSibling : ref); },
+      undo(){ nc.remove(); }
+    });
+  });
+  if (!cmds.length) return;
+  perform(compositeCommand(cmds, 'Add table column'));
+  renderPanel();
+}
+function deleteTableColumn(cell){
+  const idx = cell.cellIndex;
+  const cmds = [];
+  Array.from(cell.closest('table').rows).forEach(tr => {
+    const c = tr.cells[idx];
+    if (!c) return;
+    const p = c.parentNode, nx = c.nextSibling;
+    cmds.push({
+      redo(){ c.remove(); },
+      undo(){ p.insertBefore(c, nx && nx.parentNode === p ? nx : null); }
+    });
+  });
+  if (!cmds.length) return;
+  deselect();
+  perform(compositeCommand(cmds, 'Delete table column'));
+  toast('Column deleted.', { action: { label: 'Undo', fn: undo }, duration: 5000 });
+}
+
+/* ---------------- snippet library (localStorage) ----------------
+   Lets a seller save a section from one microsite and drop it into
+   any other — their standard security blurb, pricing table, footer. */
+function getSnippets(){
+  try { return JSON.parse(localStorage.getItem('msed:snippets') || '[]'); } catch(_e){ return []; }
+}
+function setSnippets(list){
+  try { localStorage.setItem('msed:snippets', JSON.stringify(list)); return true; }
+  catch(_e){ toast('Couldn’t save to your library — browser storage is full.', { kind: 'warn' }); return false; }
+}
+function snippetHTMLOf(el){
+  const clone = el.cloneNode(true);
+  [clone].concat(Array.from(clone.querySelectorAll('*'))).forEach(n => {
+    Array.from(n.attributes || []).forEach(at => {
+      if (at.name.startsWith('data-msed-') || at.name === 'contenteditable' || at.name === 'spellcheck') n.removeAttribute(at.name);
+    });
+  });
+  let out = clone.outerHTML;
+  // zipped sites: store original relative paths, not session blob URLs
+  if (App.zipMode) App.blobToPath.forEach((p, u) => { out = out.split(u).join(relFromHtml(p)); });
+  return out;
+}
+function saveSnippetOf(el){
+  const def = (friendlyName(el) + (el.textContent.trim() ? ' — ' + el.textContent.trim().replace(/\s+/g, ' ').slice(0, 24) : '')).trim();
+  const inp = h('input', { type: 'text', value: def });
+  showModal({
+    title: 'Save to your library',
+    body: h('div', null,
+      field('Name it so you’ll recognise it later', inp),
+      h('p', { class: 'hint' }, 'Saved items live in this browser and can be inserted into any microsite you open here.')),
+    buttons: [
+      { label: 'Cancel' },
+      { label: 'Save', primary: true, fn(){
+        const list = getSnippets();
+        list.unshift({ id: Date.now() + '-' + Math.random().toString(36).slice(2, 6), name: inp.value.trim() || def, html: snippetHTMLOf(el), t: Date.now() });
+        if (setSnippets(list.slice(0, 30))) toast('Saved. Find it under “My library” whenever something is selected.');
+        renderPanel();
+      } }
+    ]
+  });
+  setTimeout(() => { inp.focus(); inp.select(); }, 0);
+}
+function rewriteNodeAssets(node){
+  if (!App.zipMode) return;
+  const dir = App.htmlDir;
+  [node].concat(Array.from(node.querySelectorAll('*'))).forEach(el2 => {
+    if (!el2.getAttribute) return;
+    ['src', 'href'].forEach(attr => {
+      const v = el2.getAttribute(attr);
+      if (v){ const u = assetUrlFor(dir, v); if (u) el2.setAttribute(attr, u); }
+    });
+    const st2 = el2.getAttribute('style');
+    if (st2 && /url\(/i.test(st2)) el2.setAttribute('style', rewriteCssUrls(st2, dir, []));
+  });
+}
+function insertSnippet(refEl, sn){
+  const tmp = App.idoc.createElement('div');
+  tmp.innerHTML = sn.html;
+  const node = tmp.firstElementChild;
+  if (!node){ toast('That saved item couldn’t be inserted.', { kind: 'warn' }); return; }
+  node.removeAttribute('id');
+  node.querySelectorAll('[id]').forEach(n => n.removeAttribute('id'));
+  rewriteNodeAssets(node);
+  insertCommand(node, refEl.parentNode, refEl.nextSibling, 'Insert “' + sn.name + '” from library');
+  selectEl(node);
+  node.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+}
+function libraryPanel(el){
+  const s = sec('My library');
+  const saveBtn = h('button', { class: 'pbtn wide', html: icon('copy') + '<span>Save this ' + esc(friendlyName(el).toLowerCase()) + ' for reuse</span>' });
+  saveBtn.addEventListener('click', () => saveSnippetOf(el));
+  s.appendChild(h('div', { class: 'btnrow', style: 'margin-bottom:10px' }, saveBtn));
+  const snips = getSnippets();
+  if (!snips.length){
+    s.appendChild(h('p', { class: 'hint' }, 'Sections you save appear here, ready to drop into any microsite.'));
+    return s;
+  }
+  snips.forEach(sn => {
+    const ins = h('button', { class: 'pbtn', style: 'flex:1;justify-content:flex-start;overflow:hidden', title: 'Insert below the selected element' }, sn.name);
+    ins.addEventListener('click', () => insertSnippet(el, sn));
+    const del = h('button', { class: 'pbtn danger', style: 'flex:0 0 auto', title: 'Remove from your library' }, '✕');
+    del.addEventListener('click', () => {
+      if (setSnippets(getSnippets().filter(x => x.id !== sn.id))) renderPanel();
+    });
+    s.appendChild(h('div', { class: 'btnrow', style: 'margin-bottom:6px' }, ins, del));
+  });
+  return s;
+}
+
+/* ---------------- video embeds ---------------- */
+function parseVideoUrl(url){
+  url = String(url || '').trim();
+  let m;
+  if ((m = url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?[^#\s]*v=|shorts\/|embed\/|live\/))([\w-]{6,})/i)))
+    return { type: 'iframe', src: 'https://www.youtube.com/embed/' + m[1] };
+  if ((m = url.match(/vimeo\.com\/(?:video\/)?(\d+)/i)))
+    return { type: 'iframe', src: 'https://player.vimeo.com/video/' + m[1] };
+  if ((m = url.match(/loom\.com\/(?:share|embed)\/([a-zA-Z0-9]+)/i)))
+    return { type: 'iframe', src: 'https://www.loom.com/embed/' + m[1] };
+  if (/^https?:\/\/\S+\.(mp4|webm|ogg)(\?|#|$)/i.test(url)) return { type: 'video', src: url };
+  if (/^https?:\/\//i.test(url)) return { type: 'iframe', src: url };
+  return null;
+}
+function insertVideoBlock(refEl, url){
+  const v = parseVideoUrl(url);
+  if (!v){ toast('That doesn’t look like a video address — paste a full link starting with https://', { kind: 'warn' }); return false; }
+  const doc = App.idoc;
+  const wrap = doc.createElement('div');
+  wrap.style.cssText = 'position:relative;aspect-ratio:16/9;margin:20px 0;border-radius:10px;overflow:hidden;background:#000;';
+  let inner;
+  if (v.type === 'video'){
+    inner = doc.createElement('video');
+    inner.setAttribute('controls', '');
+    inner.setAttribute('src', v.src);
+    inner.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;';
+  } else {
+    inner = doc.createElement('iframe');
+    inner.setAttribute('src', v.src);
+    inner.setAttribute('title', 'Embedded video');
+    inner.setAttribute('allowfullscreen', '');
+    inner.setAttribute('allow', 'autoplay; fullscreen; picture-in-picture');
+    inner.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;border:0;';
+  }
+  wrap.appendChild(inner);
+  insertCommand(wrap, refEl.parentNode, refEl.nextSibling, 'Add video');
+  selectEl(wrap);
+  wrap.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  return true;
+}
+function openVideoModal(refEl){
+  const inp = h('input', { type: 'text', placeholder: 'https:// — YouTube, Vimeo, Loom or a direct .mp4 link' });
+  showModal({
+    title: 'Add a video',
+    body: h('div', null,
+      field('Video address', inp),
+      h('p', { class: 'hint' }, 'It plays in Preview and in the saved file (viewers need an internet connection). While editing, click it to select and move it.')),
+    buttons: [
+      { label: 'Cancel' },
+      { label: 'Add video', primary: true, fn(){ return !insertVideoBlock(refEl, inp.value); } }
+    ]
+  });
+  setTimeout(() => inp.focus(), 0);
 }
 
 /* ---------------- tab detection & management ---------------- */
@@ -2513,6 +2952,17 @@ function showPageSettings(){
   body.appendChild(field('Page title', titleIn));
   body.appendChild(field('Description (used by search and link previews)', descIn));
   body.appendChild(h('div', { class: 'field' }, h('label', null, 'Page icon'), h('div', { class: 'btnrow' }, favBtn, favNote)));
+  // change summary — handy context to hand back to Claude or a teammate
+  const sums = changeSummary();
+  if (sums.length){
+    const cs = h('div', { class: 'p-sec' }, h('h4', null, 'Changes this session (' + sums.length + ')'));
+    sums.slice(-8).forEach(l => cs.appendChild(h('div', { class: 'hist-row' }, h('span', { style: 'color:var(--text)' }, l))));
+    if (sums.length > 8) cs.appendChild(h('p', { class: 'hint' }, '…and ' + (sums.length - 8) + ' earlier.'));
+    const cp = h('button', { class: 'pbtn wide', style: 'margin-top:8px' }, 'Copy full summary (for Claude or teammates)');
+    cp.addEventListener('click', copyChangeSummary);
+    cs.appendChild(cp);
+    body.appendChild(cs);
+  }
   // in-session version history
   if (App.saves.length){
     const hist = h('div', { class: 'p-sec' }, h('h4', null, 'Versions saved this session'));
@@ -2524,7 +2974,7 @@ function showPageSettings(){
       rb.addEventListener('click', () => {
         confirmModal('Restore this version?',
           'The page will go back to how it was when you saved “' + s.name + '”. Anything done since then is discarded (this can’t be undone).',
-          'Restore', () => loadHTML(App.zipMode ? rewriteSiteHtml(s.html) : s.html, App.fileName));
+          'Restore', () => restoreSnapshot(s));
       });
       row.appendChild(rb);
       hist.appendChild(row);
@@ -2569,6 +3019,20 @@ function showPageSettings(){
       } }
     ]
   });
+}
+
+/* Restores a saved version. Zip snapshots carry every visited page. */
+function restoreSnapshot(s){
+  if (App.zipMode && s.pages){
+    App.zipPages = new Map(Object.entries(s.pages));
+    App.zip.htmlPath = s.page;
+    App.htmlDir = s.page.includes('/') ? s.page.slice(0, s.page.lastIndexOf('/') + 1) : '';
+    loadHTML(rewriteSiteHtml(s.pages[s.page]), App.fileName);
+  } else if (App.zipMode){
+    loadHTML(rewriteSiteHtml(s.html), App.fileName);
+  } else {
+    loadHTML(s.html, App.fileName);
+  }
 }
 
 /* ---------------- edit / preview mode ---------------- */
@@ -2741,6 +3205,7 @@ window.__msedTest = {
   async exportZipB64(){
     const html = buildExportHTML(true);
     const files = new Map(App.zip.entries);
+    App.zipPages.forEach((pHtml, p) => files.set(p, new TextEncoder().encode(pHtml)));
     files.set(App.zip.htmlPath, new TextEncoder().encode(html));
     const buf = new Uint8Array(await buildZip(files).arrayBuffer());
     let s = '';
@@ -2748,6 +3213,11 @@ window.__msedTest = {
     return btoa(s);
   },
   suggestFileName,
+  preflight(){ return runPreflight().map(i => i.text); },
+  parseVideoUrl,
+  insertVideo(url){ return App.selected ? insertVideoBlock(App.selected, url) : false; },
+  switchZipPage,
+  changeSummary,
   state: App,
 };
 </script>

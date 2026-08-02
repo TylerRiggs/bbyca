@@ -25,6 +25,20 @@ The suite must end `0 failed`. It verifies, for **all four fixtures**:
       and parses to an identical DOM, the rebuilt zip keeps every asset
       byte-for-byte identical, an edit lands in the rebuilt zip's HTML with
       no artifacts, and undo restores an identical export.
+- [ ] **Pre-flight**: clean fixtures yield zero issues; placeholder text,
+      dead links and missing alt are flagged; Save shows the check modal
+      instead of downloading when issues exist.
+- [ ] **Link audit**: modal lists links, edits apply and undo cleanly.
+- [ ] **Tables**: add row/column below/right of the selected cell; both
+      operations undo to an identical export.
+- [ ] **Snippets**: save a section, insert it elsewhere, no artifacts,
+      undo restores an identical export.
+- [ ] **Video**: YouTube/Vimeo/Loom/.mp4 URLs parse to the right embed;
+      insertion lands in the export and undoes cleanly.
+- [ ] **Multi-page zip**: Pages button appears, switching pages keeps
+      edits and the dirty flag, the rebuilt zip carries the edited page
+      while untouched pages and assets stay identical.
+- [ ] **Change summary**: descriptive per-edit lines are produced.
 
 ## Manual verification (per release)
 
@@ -72,6 +86,21 @@ Load each fixture in `fixtures/` and run through:
       reorder moves button + panel together (check in Preview).
 - [ ] Find & replace finds text inside non-active tabs and switches to
       them when stepping through matches.
+
+### New-feature spot checks
+- [ ] Save with a leftover "[Customer Name]" on the page → pre-flight modal
+      appears; "Show me" jumps to the element; "Save anyway" downloads.
+- [ ] Links (top bar) lists every link; editing a URL there changes the
+      saved file; `#` links show a warning marker.
+- [ ] Click a cell in fixture 3's table → Table panel adds/removes rows and
+      columns; a Bootstrap-styled table keeps its look.
+- [ ] Save a section to My library, open a different fixture, insert it.
+- [ ] Add content → Video with a YouTube link: selectable box in Edit,
+      playable in Preview and in the saved file.
+- [ ] Zip with two pages: Pages button switches; in Preview, clicking an
+      in-zip link opens that page in the editor.
+- [ ] Page settings shows "Changes this session"; Copy puts a readable
+      list on the clipboard.
 
 ### Robustness
 - [ ] Fixture 3 (Bootstrap CDN) loads and edits with no network.

@@ -313,6 +313,206 @@ console.log('\n7) Zip site: load, render, clean round-trip, edit, rebuild');
   check('zip post-undo export identical to input', same3, same3 ? '' : await diffHint(page, htmlText, out3));
 }
 
+console.log('\n8) Pre-flight check');
+{
+  const clean = readFileSync(path.join(root, 'fixtures', 'simple-onepager.html'), 'utf8');
+  await loadFixture(page, clean, 'clean.html');
+  const cleanIssues = await page.evaluate(() => window.__msedTest.preflight());
+  check('clean fixture has no issues', cleanIssues.length === 0, JSON.stringify(cleanIssues));
+
+  const messy = `<!DOCTYPE html><html><head><title>t</title></head><body>
+    <h1>Welcome [Customer Name]</h1>
+    <p>Lorem ipsum dolor sit amet, placeholder copy.</p>
+    <a href="#">Book a demo</a>
+    <img src="data:image/gif;base64,R0lGODlhAQABAAAAACw=">
+  </body></html>`;
+  await loadFixture(page, messy, 'messy.html');
+  const issues = await page.evaluate(() => window.__msedTest.preflight());
+  check('placeholder text flagged', issues.some(t => /Customer Name|Lorem/i.test(t)));
+  check('dead link flagged', issues.some(t => /doesn’t go anywhere/.test(t)));
+  check('missing alt flagged', issues.some(t => /no description/.test(t)));
+  await page.click('#btnSave');
+  await page.waitForTimeout(200);
+  check('save shows pre-flight modal instead of downloading', await page.evaluate(() =>
+    !document.querySelector('#modalRoot').hidden &&
+    document.querySelector('#modalRoot .modal-h').textContent.includes('quick look')));
+  await page.click('#modalRoot .modal-f .btn'); // "Keep editing"
+  await page.waitForTimeout(100);
+}
+
+console.log('\n9) Link audit panel');
+{
+  const text = readFileSync(path.join(root, 'fixtures', 'simple-onepager.html'), 'utf8');
+  await loadFixture(page, text, 'links.html');
+  await page.click('#btnLinks');
+  await page.waitForTimeout(200);
+  check('links modal lists the CTA link', await page.evaluate(() =>
+    !document.querySelector('#modalRoot').hidden &&
+    !!document.querySelector('#modalRoot input[value*="example.com/demo"]')));
+  await page.evaluate(() => {
+    const inp = document.querySelector('#modalRoot input[value*="example.com/demo"]');
+    inp.value = 'https://example.com/new-demo';
+    inp.dispatchEvent(new Event('change'));
+  });
+  await page.click('#modalRoot .btn-primary');
+  const out = await exportHTML(page);
+  check('link edited from the audit panel', out.includes('https://example.com/new-demo'));
+  await page.click('#btnUndo');
+  await page.waitForTimeout(120);
+  const out2 = await exportHTML(page);
+  const same = await isSame(page, text, out2);
+  check('link edit undone cleanly', same, same ? '' : await diffHint(page, text, out2));
+}
+
+console.log('\n10) Table structure editing');
+{
+  const text = readFileSync(path.join(root, 'fixtures', 'cdn-framework.html'), 'utf8');
+  await loadFixture(page, text, 'table.html');
+  await page.frameLocator('#canvas').locator('tbody td').first().click();
+  await page.waitForTimeout(200);
+  await page.keyboard.press('Escape'); // end text edit, keep selection
+  await page.waitForTimeout(120);
+  const rowsBefore = (await exportHTML(page)).match(/<tr>/g).length;
+  await page.locator('#spBody button', { hasText: '+ Row below' }).click();
+  await page.waitForTimeout(150);
+  const rowsAfter = (await exportHTML(page)).match(/<tr>/g).length;
+  check('row added below', rowsAfter === rowsBefore + 1, rowsBefore + ' -> ' + rowsAfter);
+  await page.locator('#spBody button', { hasText: '+ Column right' }).click();
+  await page.waitForTimeout(150);
+  const out = await exportHTML(page);
+  check('column added (header row too)', (out.match(/<th[\s>]/g) || []).length === 4);
+  await page.click('#btnUndo');
+  await page.click('#btnUndo');
+  await page.waitForTimeout(150);
+  const out2 = await exportHTML(page);
+  const same = await isSame(page, text, out2);
+  check('table ops fully undone', same, same ? '' : await diffHint(page, text, out2));
+}
+
+console.log('\n11) Snippet library');
+{
+  await page.evaluate(() => localStorage.removeItem('msed:snippets'));
+  const text = readFileSync(path.join(root, 'fixtures', 'cdn-framework.html'), 'utf8');
+  await loadFixture(page, text, 'snips.html');
+  await page.frameLocator('#canvas').locator('.alert').click();
+  await page.waitForTimeout(200);
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(120);
+  await page.locator('#spBody button', { hasText: 'for reuse' }).click();
+  await page.waitForTimeout(150);
+  await page.click('#modalRoot .btn-primary'); // Save with default name
+  await page.waitForTimeout(150);
+  check('snippet stored', await page.evaluate(() => JSON.parse(localStorage.getItem('msed:snippets') || '[]').length === 1));
+  // insert it below another element
+  await page.frameLocator('#canvas').locator('h1').click();
+  await page.waitForTimeout(150);
+  await page.keyboard.press('Escape');
+  await page.locator('#spBody .pbtn[title^="Insert"]').first().click();
+  await page.waitForTimeout(150);
+  const out = await exportHTML(page);
+  check('snippet inserted', (out.match(/Projected outcome/g) || []).length === 2);
+  check('no editor artifacts in snippet', !/data-msed|contenteditable/.test(out));
+  await page.click('#btnUndo');
+  await page.waitForTimeout(120);
+  const out2 = await exportHTML(page);
+  const same = await isSame(page, text, out2);
+  check('snippet insert undone cleanly', same, same ? '' : await diffHint(page, text, out2));
+  await page.evaluate(() => localStorage.removeItem('msed:snippets'));
+}
+
+console.log('\n12) Video embeds');
+{
+  const cases = [
+    ['https://www.youtube.com/watch?v=dQw4w9WgXcQ', 'https://www.youtube.com/embed/dQw4w9WgXcQ'],
+    ['https://youtu.be/dQw4w9WgXcQ', 'https://www.youtube.com/embed/dQw4w9WgXcQ'],
+    ['https://vimeo.com/123456789', 'https://player.vimeo.com/video/123456789'],
+    ['https://www.loom.com/share/abc123def456', 'https://www.loom.com/embed/abc123def456'],
+    ['https://cdn.example.com/demo.mp4', 'https://cdn.example.com/demo.mp4'],
+  ];
+  for (const [inp, want] of cases){
+    const got = await page.evaluate(u => window.__msedTest.parseVideoUrl(u), inp);
+    check('parse ' + inp.slice(8, 40), got && got.src === want, 'got ' + JSON.stringify(got));
+  }
+  check('garbage rejected', await page.evaluate(() => window.__msedTest.parseVideoUrl('not a url') === null));
+  const text = readFileSync(path.join(root, 'fixtures', 'simple-onepager.html'), 'utf8');
+  await loadFixture(page, text, 'video.html');
+  await page.frameLocator('#canvas').locator('h1').click();
+  await page.waitForTimeout(150);
+  await page.keyboard.press('Escape');
+  const inserted = await page.evaluate(() => window.__msedTest.insertVideo('https://youtu.be/dQw4w9WgXcQ'));
+  check('video block inserted', inserted);
+  const out = await exportHTML(page);
+  check('embed iframe in export', out.includes('https://www.youtube.com/embed/dQw4w9WgXcQ') && out.includes('allowfullscreen'));
+  await page.click('#btnUndo');
+  await page.waitForTimeout(120);
+  const out2 = await exportHTML(page);
+  const same = await isSame(page, text, out2);
+  check('video insert undone cleanly', same, same ? '' : await diffHint(page, text, out2));
+}
+
+console.log('\n13) Multi-page zip editing');
+{
+  const zdir = path.join(root, 'fixtures', 'zip-site');
+  const htmlText = readFileSync(path.join(zdir, 'index.html'), 'utf8');
+  const cssBuf = readFileSync(path.join(zdir, 'css/style.css'));
+  const svgBuf = readFileSync(path.join(zdir, 'img/logo.svg'));
+  const pngBuf = readFileSync(path.join(zdir, 'img/chart.png'));
+  const aboutText = '<!DOCTYPE html>\n<html lang="en"><head><meta charset="utf-8"><title>About</title><link rel="stylesheet" href="css/style.css"></head><body><h1>About Wingtip</h1><p>Founded in 1998.</p><a href="index.html">Back home</a></body></html>';
+  const inputZip = nodeBuildZip([
+    ['index.html', Buffer.from(htmlText), 0],
+    ['about.html', Buffer.from(aboutText), 0],
+    ['css/style.css', cssBuf, 8],
+    ['img/logo.svg', svgBuf, 0],
+    ['img/chart.png', pngBuf, 0],
+  ]);
+  await page.evaluate(([b64, n]) => window.__msedTest.loadZip(b64, n), [inputZip.toString('base64'), 'multi-site.zip']);
+  await page.waitForFunction(() => window.__msedTest.ready(), null, { timeout: 10000 });
+  await page.waitForTimeout(500);
+  check('Pages button visible', await page.evaluate(() => !document.querySelector('#btnPages').hidden));
+  // switch to about.html, edit it
+  await page.evaluate(() => window.__msedTest.switchZipPage('about.html'));
+  await page.waitForFunction(() => window.__msedTest.ready() && window.__msedTest.state.zip.htmlPath === 'about.html');
+  await page.waitForTimeout(400);
+  check('about page stylesheet applied', await page.evaluate(() => {
+    const st = window.__msedTest.state;
+    return st.iwin.getComputedStyle(st.idoc.body).backgroundColor === 'rgb(248, 250, 252)';
+  }));
+  await page.frameLocator('#canvas').locator('h1').click();
+  await page.waitForTimeout(150);
+  await page.keyboard.type(' MOOSE');
+  await page.keyboard.press('Escape');
+  // switch back to index — the about edit must survive
+  await page.evaluate(() => window.__msedTest.switchZipPage('index.html'));
+  await page.waitForFunction(() => window.__msedTest.ready() && window.__msedTest.state.zip.htmlPath === 'index.html');
+  await page.waitForTimeout(400);
+  check('dirty flag survives page switch', await page.evaluate(() => window.__msedTest.state.dirty));
+  const rebuilt = nodeParseZip(Buffer.from(await page.evaluate(() => window.__msedTest.exportZipB64()), 'base64'));
+  check('about edit lands in rebuilt zip', rebuilt.get('about.html').toString().includes('MOOSE'));
+  check('about html has no blob/artifacts', !/blob:|data-msed|contenteditable/.test(rebuilt.get('about.html').toString()));
+  const idxOut = rebuilt.get('index.html').toString();
+  const sameIdx = await isSame(page, htmlText, idxOut);
+  check('untouched index page identical', sameIdx, sameIdx ? '' : await diffHint(page, htmlText, idxOut));
+  check('assets still byte-identical', Buffer.compare(rebuilt.get('css/style.css'), cssBuf) === 0 && Buffer.compare(rebuilt.get('img/chart.png'), pngBuf) === 0);
+}
+
+console.log('\n14) Change summary');
+{
+  const text = readFileSync(path.join(root, 'fixtures', 'simple-onepager.html'), 'utf8');
+  await loadFixture(page, text, 'summary.html');
+  await page.frameLocator('#canvas').locator('h1').click();
+  await page.waitForTimeout(150);
+  await page.keyboard.type(' EDIT1');
+  await page.keyboard.press('Escape');
+  await page.frameLocator('#canvas').locator('.quote').click();
+  await page.waitForTimeout(150);
+  await page.keyboard.press('Escape');
+  await page.keyboard.press('Delete');
+  await page.waitForTimeout(120);
+  const lines = await page.evaluate(() => window.__msedTest.changeSummary());
+  check('summary has both edits', lines.length === 2, JSON.stringify(lines));
+  check('summary lines are descriptive', lines.some(l => /^Edit heading — “/.test(l)) && lines.some(l => /^Delete \w+ — “/.test(l)), JSON.stringify(lines));
+}
+
 await browser.close();
 console.log('\n' + passed + ' passed, ' + failed + ' failed');
 process.exit(failed ? 1 : 0);
