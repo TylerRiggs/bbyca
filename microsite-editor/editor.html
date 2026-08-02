@@ -415,9 +415,9 @@ kbd{
     <div id="dzCard">
       <div class="dz-icon"><span class="i" data-icon="doc"></span></div>
       <h1>Edit your microsite — no code needed</h1>
-      <p>Drop an HTML microsite here to open it.</p>
+      <p>Drop an HTML microsite here — a single .html file, or a .zip site with its images and styles.</p>
       <div class="dz-steps">
-        <div class="dz-step"><span class="n">1</span><b>Open</b><span>Drop your .html file here, or browse for it.</span></div>
+        <div class="dz-step"><span class="n">1</span><b>Open</b><span>Drop your .html or .zip file here, or browse for it.</span></div>
         <div class="dz-step"><span class="n">2</span><b>Edit</b><span>Click any text or image on the page to change it.</span></div>
         <div class="dz-step"><span class="n">3</span><b>Save</b><span>Download the updated file, ready to share.</span></div>
       </div>
@@ -431,7 +431,7 @@ kbd{
 <div id="linkPop" hidden></div>
 <div id="toasts"></div>
 <div id="modalRoot" hidden></div>
-<input type="file" id="filePicker" accept=".html,.htm" hidden>
+<input type="file" id="filePicker" accept=".html,.htm,.zip" hidden>
 <input type="file" id="imgPicker" accept="image/*" hidden>
 
 <script>
@@ -633,12 +633,18 @@ function guardOpen(fn){
   } else fn();
 }
 function readMicrositeFile(file){
+  if (/\.zip$/i.test(file.name)){
+    file.arrayBuffer()
+      .then(buf => openZipBuffer(buf, file.name))
+      .catch(err => toast('Sorry — that zip couldn’t be opened. ' + ((err && err.message) || ''), { kind: 'error', duration: 7000 }));
+    return;
+  }
   if (!/\.html?$/i.test(file.name)){
-    toast('That doesn’t look like an HTML file. Please choose a .html file.', { kind: 'warn' });
+    toast('Please choose a .html file, or a .zip that contains one.', { kind: 'warn' });
     return;
   }
   const rd = new FileReader();
-  rd.onload = () => loadHTML(String(rd.result), file.name);
+  rd.onload = () => { clearZipState(); loadHTML(String(rd.result), file.name); };
   rd.onerror = () => toast('Sorry — that file couldn’t be read.', { kind: 'error' });
   rd.readAsText(file);
 }
@@ -658,6 +664,261 @@ function readMicrositeFile(file){
     if (f) guardOpen(() => readMicrositeFile(f));
   }
 }));
+
+/* ---------------- zipped sites (.zip with assets) ----------------
+   A zipped site is unpacked entirely in memory (vanilla zip reader/
+   writer — stored entries plus deflate via the browser's native
+   DecompressionStream; the rebuilt zip uses stored entries).
+   The main HTML page is rewritten so relative asset references
+   (src/href/srcset, inline styles, <style> blocks, and url()/@import
+   inside .css files) point at in-memory blob: URLs — that's what the
+   iframe renders. On export, every blob: URL is substituted back to
+   its original relative path; Save rebuilds the zip with the updated
+   HTML while every other file stays byte-for-byte untouched. */
+App.zipMode = false;
+App.htmlDir = '';
+App.zip = { entries: null, htmlPath: '' };
+App.blobToPath = new Map();   // blob URL -> path inside the zip
+let _rawUrlCache = new Map(); // asset path -> raw blob URL
+let _cssUrlCache = new Map(); // css path -> rewritten-css blob URL
+
+function clearZipState(){
+  _rawUrlCache.forEach(u => URL.revokeObjectURL(u));
+  _cssUrlCache.forEach(u => URL.revokeObjectURL(u));
+  _rawUrlCache = new Map();
+  _cssUrlCache = new Map();
+  App.blobToPath = new Map();
+  App.zipMode = false;
+  App.zip = { entries: null, htmlPath: '' };
+  App.htmlDir = '';
+}
+
+const _crcTable = (() => {
+  const t = new Int32Array(256);
+  for (let n = 0; n < 256; n++){
+    let c = n;
+    for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1;
+    t[n] = c;
+  }
+  return t;
+})();
+function crc32(u8){
+  let c = -1;
+  for (let i = 0; i < u8.length; i++) c = _crcTable[(c ^ u8[i]) & 0xFF] ^ (c >>> 8);
+  return (c ^ -1) >>> 0;
+}
+
+async function parseZip(buf){
+  const dv = new DataView(buf);
+  const u8 = new Uint8Array(buf);
+  // find the End Of Central Directory record (scan back through the
+  // maximum possible comment length)
+  let eocd = -1;
+  for (let i = u8.length - 22, min = Math.max(0, u8.length - 65558); i >= min; i--){
+    if (dv.getUint32(i, true) === 0x06054b50){ eocd = i; break; }
+  }
+  if (eocd < 0) throw new Error('This doesn’t look like a valid zip file.');
+  const count = dv.getUint16(eocd + 10, true);
+  let off = dv.getUint32(eocd + 16, true);
+  const td = new TextDecoder();
+  const files = new Map();
+  for (let i = 0; i < count; i++){
+    if (dv.getUint32(off, true) !== 0x02014b50) throw new Error('The zip file appears to be damaged.');
+    const method = dv.getUint16(off + 10, true);
+    const csize = dv.getUint32(off + 20, true);
+    const nameLen = dv.getUint16(off + 28, true);
+    const extraLen = dv.getUint16(off + 30, true);
+    const cmtLen = dv.getUint16(off + 32, true);
+    const lho = dv.getUint32(off + 42, true);
+    const name = td.decode(u8.subarray(off + 46, off + 46 + nameLen)).replace(/\\/g, '/');
+    off += 46 + nameLen + extraLen + cmtLen;
+    if (name.endsWith('/') || name.includes('__MACOSX') || name.split('/').pop().startsWith('.')) continue;
+    // the local header carries its own (possibly different) name/extra lengths
+    const lnl = dv.getUint16(lho + 26, true), lel = dv.getUint16(lho + 28, true);
+    const dataStart = lho + 30 + lnl + lel;
+    const cdata = u8.slice(dataStart, dataStart + csize);
+    let data;
+    if (method === 0) data = cdata;
+    else if (method === 8){
+      const stream = new Blob([cdata]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
+      data = new Uint8Array(await new Response(stream).arrayBuffer());
+    } else throw new Error('“' + name + '” uses a compression this editor can’t read.');
+    files.set(name, data);
+  }
+  return files;
+}
+
+function buildZip(files){
+  const te = new TextEncoder();
+  const now = new Date();
+  const dosTime = (now.getHours() << 11) | (now.getMinutes() << 5) | (now.getSeconds() >> 1);
+  const dosDate = ((now.getFullYear() - 1980) << 9) | ((now.getMonth() + 1) << 5) | now.getDate();
+  const chunks = [], central = [];
+  let offset = 0;
+  files.forEach((data, path) => {
+    const nameB = te.encode(path);
+    const crc = crc32(data);
+    const lh = new Uint8Array(30 + nameB.length);
+    const lv = new DataView(lh.buffer);
+    lv.setUint32(0, 0x04034b50, true);
+    lv.setUint16(4, 20, true);
+    lv.setUint16(6, 0x0800, true); // UTF-8 names
+    lv.setUint16(8, 0, true);      // stored (no compression)
+    lv.setUint16(10, dosTime, true);
+    lv.setUint16(12, dosDate, true);
+    lv.setUint32(14, crc, true);
+    lv.setUint32(18, data.length, true);
+    lv.setUint32(22, data.length, true);
+    lv.setUint16(26, nameB.length, true);
+    lh.set(nameB, 30);
+    chunks.push(lh, data);
+    const ch = new Uint8Array(46 + nameB.length);
+    const cv = new DataView(ch.buffer);
+    cv.setUint32(0, 0x02014b50, true);
+    cv.setUint16(4, 20, true);
+    cv.setUint16(6, 20, true);
+    cv.setUint16(8, 0x0800, true);
+    cv.setUint16(10, 0, true);
+    cv.setUint16(12, dosTime, true);
+    cv.setUint16(14, dosDate, true);
+    cv.setUint32(16, crc, true);
+    cv.setUint32(20, data.length, true);
+    cv.setUint32(24, data.length, true);
+    cv.setUint16(28, nameB.length, true);
+    cv.setUint32(42, offset, true);
+    ch.set(nameB, 46);
+    central.push(ch);
+    offset += lh.length + data.length;
+  });
+  const cdSize = central.reduce((s, c) => s + c.length, 0);
+  const eocd = new Uint8Array(22);
+  const ev = new DataView(eocd.buffer);
+  ev.setUint32(0, 0x06054b50, true);
+  ev.setUint16(8, central.length, true);
+  ev.setUint16(10, central.length, true);
+  ev.setUint32(12, cdSize, true);
+  ev.setUint32(16, offset, true);
+  return new Blob(chunks.concat(central, [eocd]), { type: 'application/zip' });
+}
+
+const ZIP_MIME = { css: 'text/css', js: 'text/javascript', mjs: 'text/javascript', png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', svg: 'image/svg+xml', webp: 'image/webp', avif: 'image/avif', ico: 'image/x-icon', woff: 'font/woff', woff2: 'font/woff2', ttf: 'font/ttf', otf: 'font/otf', eot: 'application/vnd.ms-fontobject', mp4: 'video/mp4', webm: 'video/webm', mp3: 'audio/mpeg', json: 'application/json', html: 'text/html', htm: 'text/html' };
+function zipMime(path){
+  return ZIP_MIME[path.split('.').pop().toLowerCase()] || 'application/octet-stream';
+}
+function resolveZipPath(baseDir, ref){
+  if (!ref) return null;
+  const r = String(ref).trim();
+  if (/^(https?:|data:|blob:|mailto:|tel:|javascript:|#|\/\/)/i.test(r)) return null;
+  const clean = r.split('#')[0].split('?')[0];
+  if (!clean) return null;
+  const joined = clean.startsWith('/') ? clean.slice(1) : baseDir + clean;
+  const out = [];
+  for (const p of joined.split('/')){
+    if (p === '' || p === '.') continue;
+    if (p === '..') out.pop(); else out.push(p);
+  }
+  let path = out.join('/');
+  try { if (!App.zip.entries.has(path)) path = decodeURIComponent(path); } catch(_e){}
+  return path;
+}
+function rawUrlFor(path){
+  if (_rawUrlCache.has(path)) return _rawUrlCache.get(path);
+  const url = URL.createObjectURL(new Blob([App.zip.entries.get(path)], { type: zipMime(path) }));
+  _rawUrlCache.set(path, url);
+  App.blobToPath.set(url, path);
+  return url;
+}
+function cssUrlFor(path, stack){
+  if (_cssUrlCache.has(path)) return _cssUrlCache.get(path);
+  if (stack.includes(path)) return rawUrlFor(path); // circular @import — bail to raw
+  const text = new TextDecoder().decode(App.zip.entries.get(path));
+  const dir = path.includes('/') ? path.slice(0, path.lastIndexOf('/') + 1) : '';
+  const rewritten = rewriteCssUrls(text, dir, stack.concat(path));
+  const url = URL.createObjectURL(new Blob([rewritten], { type: 'text/css' }));
+  _cssUrlCache.set(path, url);
+  App.blobToPath.set(url, path);
+  return url;
+}
+function assetUrlFor(baseDir, ref, stack){
+  if (!App.zip.entries) return null;
+  const path = resolveZipPath(baseDir, ref);
+  if (!path || path === App.zip.htmlPath || !App.zip.entries.has(path)) return null;
+  return /\.css$/i.test(path) ? cssUrlFor(path, stack || []) : rawUrlFor(path);
+}
+function rewriteCssUrls(text, baseDir, stack){
+  let out = text.replace(/url\(\s*(['"]?)([^'")]+)\1\s*\)/gi, (m, q, ref) => {
+    const u = assetUrlFor(baseDir, ref, stack);
+    return u ? 'url("' + u + '")' : m;
+  });
+  out = out.replace(/@import\s+(['"])([^'"]+)\1/gi, (m, q, ref) => {
+    const u = assetUrlFor(baseDir, ref, stack);
+    return u ? '@import "' + u + '"' : m;
+  });
+  return out;
+}
+/* Rewrites the main page's relative references to blob: URLs.
+   Also used when restoring an in-session version of a zipped site. */
+function rewriteSiteHtml(rawHtml){
+  const doc = new DOMParser().parseFromString(rawHtml, 'text/html');
+  const dir = App.htmlDir;
+  doc.querySelectorAll('[src]').forEach(el => {
+    const u = assetUrlFor(dir, el.getAttribute('src'));
+    if (u) el.setAttribute('src', u);
+  });
+  doc.querySelectorAll('link[href]').forEach(el => {
+    const u = assetUrlFor(dir, el.getAttribute('href'));
+    if (u) el.setAttribute('href', u);
+  });
+  doc.querySelectorAll('[srcset]').forEach(el => {
+    const nv = el.getAttribute('srcset').split(',').map(part => {
+      const bits = part.trim().split(/\s+/);
+      const u = assetUrlFor(dir, bits[0]);
+      if (u) bits[0] = u;
+      return bits.join(' ');
+    }).join(', ');
+    el.setAttribute('srcset', nv);
+  });
+  doc.querySelectorAll('[style]').forEach(el => {
+    const s = el.getAttribute('style');
+    if (/url\(/i.test(s)) el.setAttribute('style', rewriteCssUrls(s, dir, []));
+  });
+  doc.querySelectorAll('style').forEach(st => {
+    if (/url\(|@import/i.test(st.textContent)) st.textContent = rewriteCssUrls(st.textContent, dir, []);
+  });
+  const dt = rawHtml.match(/^\s*<!doctype[^>]*>/i);
+  return (dt ? dt[0].trim() : '<!DOCTYPE html>') + '\n' + doc.documentElement.outerHTML;
+}
+/* Path of an asset expressed relative to the main HTML page's folder. */
+function relFromHtml(path){
+  const from = App.htmlDir.split('/').filter(Boolean);
+  const to = path.split('/');
+  let i = 0;
+  while (i < from.length && from[i] === to[i]) i++;
+  return '../'.repeat(from.length - i) + to.slice(i).join('/');
+}
+async function openZipBuffer(buf, name){
+  const entries = await parseZip(buf);
+  const htmls = Array.from(entries.keys()).filter(p => /\.html?$/i.test(p));
+  if (!htmls.length) throw new Error('No HTML page was found inside this zip.');
+  htmls.sort((a, b) => {
+    const ia = /(^|\/)index\.html?$/i.test(a) ? 0 : 1;
+    const ib = /(^|\/)index\.html?$/i.test(b) ? 0 : 1;
+    if (ia !== ib) return ia - ib;
+    const da = a.split('/').length, db = b.split('/').length;
+    if (da !== db) return da - db;
+    return a.localeCompare(b);
+  });
+  const main = htmls[0];
+  clearZipState();
+  App.zip = { entries, htmlPath: main };
+  App.zipMode = true;
+  App.htmlDir = main.includes('/') ? main.slice(0, main.lastIndexOf('/') + 1) : '';
+  const raw = new TextDecoder().decode(entries.get(main));
+  loadHTML(rewriteSiteHtml(raw), name);
+  if (htmls.length > 1){
+    toast('This zip has ' + htmls.length + ' pages — editing “' + main + '”. The other pages are kept unchanged when you save.', { duration: 8000 });
+  }
+}
 
 /* ---------------- load / render ---------------- */
 function loadHTML(text, name){
@@ -760,10 +1021,19 @@ function buildExportHTML(endSession){
       if (at.name.startsWith('data-msed-')) n.removeAttribute(at.name);
     }
   }
-  return App.doctype + '\n' + clone.outerHTML;
+  let out = App.doctype + '\n' + clone.outerHTML;
+  if (App.zipMode){
+    // put the original relative asset paths back in place of the
+    // in-memory blob: URLs (blob URLs are globally unique strings,
+    // so plain substitution on the serialized HTML is safe)
+    App.blobToPath.forEach((path, url) => {
+      out = out.split(url).join(relFromHtml(path));
+    });
+  }
+  return out;
 }
 function suggestFileName(name){
-  const m = String(name || 'microsite.html').match(/^(.*?)(?:-v(\d+))?(\.html?)?$/i);
+  const m = String(name || 'microsite.html').match(/^(.*?)(?:-v(\d+))?(\.(?:html?|zip))?$/i);
   const base = m[1] || 'microsite';
   const n = m[2] ? (+m[2] + 1) : 2;
   return base + '-v' + n + (m[3] || '.html');
@@ -773,7 +1043,15 @@ function saveFile(){
   const html = buildExportHTML(true);
   if (html === null){ toast('Nothing to save yet.', { kind: 'warn' }); return; }
   const outName = suggestFileName(App.fileName);
-  const blob = new Blob([html], { type: 'text/html' });
+  let blob;
+  if (App.zipMode){
+    // rebuild the zip: updated HTML page, every other file untouched
+    const files = new Map(App.zip.entries);
+    files.set(App.zip.htmlPath, new TextEncoder().encode(html));
+    blob = buildZip(files);
+  } else {
+    blob = new Blob([html], { type: 'text/html' });
+  }
   const url = URL.createObjectURL(blob);
   const a = h('a', { href: url, download: outName });
   document.body.appendChild(a); a.click(); a.remove();
@@ -2246,7 +2524,7 @@ function showPageSettings(){
       rb.addEventListener('click', () => {
         confirmModal('Restore this version?',
           'The page will go back to how it was when you saved “' + s.name + '”. Anything done since then is discarded (this can’t be undone).',
-          'Restore', () => loadHTML(s.html, App.fileName));
+          'Restore', () => loadHTML(App.zipMode ? rewriteSiteHtml(s.html) : s.html, App.fileName));
       });
       row.appendChild(rb);
       hist.appendChild(row);
@@ -2367,7 +2645,9 @@ document.addEventListener('keydown', e => handleShortcut(e, false));
 function draftKey(){ return 'msed:draft:' + (App.fileName || ''); }
 let draftWarned = false;
 setInterval(() => {
-  if (!App.dirty || !App.idoc || App.loading) return;
+  // zipped sites skip draft backup: their assets only live in memory,
+  // so a restored draft in a fresh session couldn't rebuild the zip
+  if (!App.dirty || !App.idoc || App.loading || App.zipMode) return;
   try {
     const html = buildExportHTML(false); // don't interrupt typing
     if (html) localStorage.setItem(draftKey(), JSON.stringify({ t: Date.now(), html }));
@@ -2380,6 +2660,7 @@ setInterval(() => {
 }, 15000);
 function clearDraft(){ try { localStorage.removeItem(draftKey()); } catch(_e){} }
 function checkDraft(){
+  if (App.zipMode) return;
   let d = null;
   try { d = JSON.parse(localStorage.getItem(draftKey()) || 'null'); } catch(_e){}
   if (!d || !d.html) return;
@@ -2448,9 +2729,24 @@ function showCheatSheet(){
    Used by the automated round-trip test (see TESTING.md and
    test/roundtrip.test.mjs). Not part of the seller-facing UI. */
 window.__msedTest = {
-  load(html, name){ loadHTML(html, name || 'test.html'); },
+  load(html, name){ clearZipState(); loadHTML(html, name || 'test.html'); },
   ready(){ return !!(App.idoc && App.idoc.body) && !App.loading; },
   export(){ return buildExportHTML(true); },
+  async loadZip(b64, name){
+    const bin = atob(b64);
+    const u8 = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+    await openZipBuffer(u8.buffer, name || 'test.zip');
+  },
+  async exportZipB64(){
+    const html = buildExportHTML(true);
+    const files = new Map(App.zip.entries);
+    files.set(App.zip.htmlPath, new TextEncoder().encode(html));
+    const buf = new Uint8Array(await buildZip(files).arrayBuffer());
+    let s = '';
+    for (let i = 0; i < buf.length; i += 0x8000) s += String.fromCharCode.apply(null, buf.subarray(i, i + 0x8000));
+    return btoa(s);
+  },
   suggestFileName,
   state: App,
 };

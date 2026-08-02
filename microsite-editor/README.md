@@ -8,8 +8,12 @@ install, no server, no build step.
 
 ## For sellers — how to use it
 
-1. **Open** — double-click `editor.html`. Drag your microsite (`.html` file)
-   onto the window, or click **Choose a file**.
+1. **Open** — double-click `editor.html`. Drag your microsite onto the
+   window, or click **Choose a file**. Both kinds of microsite work:
+   - a single `.html` file, or
+   - a `.zip` of a site folder (the page plus its images, styles and
+     scripts). The editor opens the main page; when you save, you get a
+     new `.zip` with your edits and every other file untouched.
 2. **Edit** — click anything on the page:
    - **Text**: click it and start typing. A small toolbar appears for bold,
      colour, size, alignment, lists and links. Paste is always clean text;
@@ -33,8 +37,9 @@ install, no server, no build step.
 3. **Preview** — the toggle in the top bar shows the page exactly as your
    customer will see it (with a phone-width option).
 4. **Save** — click **Save** (or `Ctrl+S`). You get a new file like
-   `yourfile-v2.html`; the original is never touched. Send that file to the
-   customer, host it, or hand it back to Claude for bigger changes.
+   `yourfile-v2.html` (or `yourfile-v2.zip`); the original is never touched.
+   Send that file to the customer, host it, or hand it back to Claude for
+   bigger changes.
 
 If your browser crashes, reopen the same file — the editor keeps a draft and
 offers to restore it. Press `?` any time for the shortcut cheat-sheet.
@@ -76,6 +81,16 @@ Everything lives in `editor.html` (vanilla JS, no dependencies, no network).
   (`data-tab`/`data-target`), and navs of same-page `#links` whose targets
   include hidden panels. Reordering moves the button and its panel together
   and is disabled when buttons/panels don't share parents.
+- **Zipped sites**: `.zip` inputs are unpacked entirely in memory by a
+  vanilla zip reader (stored entries + deflate via the browser-native
+  `DecompressionStream`). The main HTML page (preferring `index.html`) is
+  rewritten so relative references — `src`/`href`/`srcset`, inline
+  `style="url(…)"`, `<style>` blocks, and `url()`/`@import` inside `.css`
+  files (resolved relative to each stylesheet, with circular-import
+  protection) — point at blob URLs; the iframe renders those. On export the
+  substitution is reversed string-for-string (blob URLs are globally
+  unique), and Save rebuilds the zip (stored entries) with the updated HTML
+  while all other files stay byte-for-byte identical.
 
 ### How export cleanup works
 
@@ -96,8 +111,10 @@ node test/roundtrip.test.mjs
 ```
 
 See `TESTING.md` for the manual checklist. Fixtures in `fixtures/` cover a
-plain one-pager, a JS-tabbed SPA page, a Bootstrap-from-CDN page and a page
-with base64-embedded images.
+plain one-pager, a JS-tabbed SPA page, a Bootstrap-from-CDN page, a page
+with base64-embedded images, and `zip-site/` (a folder site the test zips
+up — mixing stored and deflated entries — to exercise the .zip path
+end-to-end).
 
 ### Known limitations
 
@@ -114,3 +131,12 @@ with base64-embedded images.
   (e.g. inactive tab panels), so they can't be un-hidden in a later session.
 - Draft autosave uses `localStorage` and silently degrades (with one
   warning) for very large files that exceed the storage quota.
+- Zipped sites: only the main page is editable — other `.html` pages in the
+  zip pass through unchanged (a toast says which page was opened). Draft
+  autosave is off in zip mode (assets only live in memory, so a draft
+  restored in a fresh session couldn't rebuild the zip). Assets referenced
+  only from JavaScript at runtime (e.g. `fetch('data.json')`) aren't
+  rewritten and won't load in the canvas, though they're preserved in the
+  saved zip. A replaced image is embedded as a data URI; the original asset
+  file stays in the zip unused. Zip64 archives (>4 GB / >65k entries) are
+  not supported.

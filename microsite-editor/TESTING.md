@@ -18,14 +18,23 @@ The suite must end `0 failed`. It verifies, for **all four fixtures**:
 - [ ] Undo after a text edit or a section delete restores a byte-identical
       export.
 - [ ] Versioned filename suggestion increments (`x.html` → `x-v2.html` →
-      `x-v3.html`).
+      `x-v3.html`, and `x.zip` → `x-v2.zip`).
+- [ ] **Zip sites** (`fixtures/zip-site/`, zipped by the test with a mix of
+      stored and deflated entries): renders with its stylesheet and images
+      (blob URLs), a no-edit export restores the original relative paths
+      and parses to an identical DOM, the rebuilt zip keeps every asset
+      byte-for-byte identical, an edit lands in the rebuilt zip's HTML with
+      no artifacts, and undo restores an identical export.
 
 ## Manual verification (per release)
 
 Load each fixture in `fixtures/` and run through:
 
 ### Core loop (every fixture)
-- [ ] File opens by drag-drop **and** by the file picker.
+- [ ] File opens by drag-drop **and** by the file picker (.html and .zip).
+- [ ] Zip a copy of `fixtures/zip-site/` and open it: page renders with its
+      images and styles; Save downloads `…-v2.zip`; unzip it and open
+      `index.html` directly in a browser — it looks identical.
 - [ ] Page renders identically to opening the fixture directly in a browser.
 - [ ] Save downloads `<name>-v2.html`; the saved file opens standalone and
       looks identical (fixture 3 needs network for its CDN CSS).
