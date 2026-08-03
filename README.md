@@ -2,11 +2,8 @@
 
 Tools in this repository:
 
-- [`microsite-editor/`](microsite-editor/README.md) — a self-contained,
-  no-install WYSIWYG editor (`editor.html`) that lets non-technical sellers
-  visually edit AI-generated HTML microsites — a single .html file or a
-  .zip site with assets — and save a clean file that can round-trip back
-  into Claude.
+- **EZ HTML** — the microsite WYSIWYG editor formerly in this repo — now
+  lives in its own repository: [TylerRiggs/EZ-HTML](https://github.com/TylerRiggs/EZ-HTML).
 - [`adobe-presentation/`](adobe-presentation/SKILL.md) — a Claude skill for
   Adobe-branded collateral (details below).
 

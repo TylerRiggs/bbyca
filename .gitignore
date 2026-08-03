@@ -11,8 +11,3 @@ adobe-presentation/assets/logos/*
 !adobe-presentation/templates/*.pptx
 !adobe-presentation/templates/*.docx
 __pycache__/
-
-# microsite-editor test dependencies (npm i playwright-core)
-microsite-editor/node_modules/
-microsite-editor/package.json
-microsite-editor/package-lock.json
